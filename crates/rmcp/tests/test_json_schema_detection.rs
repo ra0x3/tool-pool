@@ -1,3 +1,5 @@
+#![cfg(feature = "schemars")]
+
 //cargo test --test test_json_schema_detection --features "client server macros"
 use rmcp::{
     Json, ServerHandler, handler::server::router::tool::ToolRouter, tool, tool_handler, tool_router,

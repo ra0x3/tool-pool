@@ -1,3 +1,5 @@
+#![cfg(feature = "schemars")]
+
 mod tests {
     use rmcp::model::{ClientJsonRpcMessage, ServerJsonRpcMessage};
     use schemars::generate::SchemaSettings;

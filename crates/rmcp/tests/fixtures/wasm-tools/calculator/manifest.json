@@ -1,0 +1,40 @@
+{
+  "name": "calculator",
+  "version": "1.0.0",
+  "description": "A simple calculator that performs basic arithmetic operations",
+  "wasm_module": "calculator.wasm",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "enum": ["add", "subtract", "multiply", "divide"],
+        "description": "The arithmetic operation to perform"
+      },
+      "a": {
+        "type": "number",
+        "description": "The first operand"
+      },
+      "b": {
+        "type": "number",
+        "description": "The second operand"
+      }
+    },
+    "required": ["operation", "a", "b"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "number",
+        "description": "The result of the calculation"
+      }
+    },
+    "required": ["result"]
+  },
+  "timeout_seconds": 5,
+  "max_memory_bytes": 10485760,
+  "max_fuel": 10000000,
+  "credentials": [],
+  "env_vars": []
+}

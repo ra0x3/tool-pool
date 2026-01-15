@@ -1,5 +1,7 @@
 use std::{borrow::Cow, fmt::Display};
 
+#[cfg(any(feature = "client", feature = "server"))]
+use crate::ServiceError;
 pub use crate::model::ErrorData;
 #[deprecated(
     note = "Use `rmcp::ErrorData` instead, `rmcp::ErrorData` could become `RmcpError` in the future."
@@ -17,7 +19,7 @@ impl Display for ErrorData {
 
 impl std::error::Error for ErrorData {}
 
-/// This is an unified error type for the errors could be returned by the service.
+/// This is a unified error type for the errors could be returned by the service.
 #[derive(Debug, thiserror::Error)]
 #[allow(clippy::large_enum_variant)]
 pub enum RmcpError {

@@ -1,12 +1,14 @@
 use futures::{FutureExt, future::BoxFuture};
 use thiserror::Error;
 
+#[cfg(feature = "server")]
+use crate::model::ServerJsonRpcMessage;
 use crate::{
     error::ErrorData as McpError,
     model::{
         CancelledNotification, CancelledNotificationParam, Extensions, GetExtensions, GetMeta,
         JsonRpcError, JsonRpcMessage, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, Meta,
-        NumberOrString, ProgressToken, RequestId, ServerJsonRpcMessage,
+        NumberOrString, ProgressToken, RequestId,
     },
     transport::{DynamicTransportError, IntoTransport, Transport},
 };
@@ -687,7 +689,7 @@ where
                 Event::PeerMessage(m)
             } else {
                 tokio::select! {
-                    m = sink_proxy_rx.recv(), if !sink_proxy_rx.is_closed() => {
+                    m = sink_proxy_rx.recv() => {
                         if let Some(m) = m {
                             Event::ToSink(m)
                         } else {
@@ -698,12 +700,25 @@ where
                         if let Some(m) = m {
                             Event::PeerMessage(m)
                         } else {
-                            // input stream closed
-                            tracing::info!("input stream terminated");
+                            // [PATCH: ra0x3/mcpkit-rs] Drain pending messages on EOF to fix tokio 1.36 race condition
+                            // Input stream closed - but don't break immediately. Continue processing pending messages from sink_proxy_rx
+                            tracing::info!("input stream terminated, draining pending messages");
+
+                            // Give spawned tasks time to send their messages
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                            // Process any pending messages in sink_proxy_rx
+                            while let Ok(m) = sink_proxy_rx.try_recv() {
+                                tracing::debug!("Processing pending message after input close");
+                                if let Err(e) = transport.send(m).await {
+                                    tracing::error!("Failed to send pending message: {:?}", e);
+                                }
+                            }
+
                             break QuitReason::Closed
                         }
                     }
-                    m = peer_rx.recv(), if !peer_rx.is_closed() => {
+                    m = peer_rx.recv() => {
                         if let Some(m) = m {
                             Event::ProxyMessage(m)
                         } else {
@@ -771,14 +786,14 @@ where
                         if let Some(ct) = local_ct_pool.remove(id) {
                             ct.cancel();
                         }
-                        let send = transport.send(m);
-                        let current_span = tracing::Span::current();
-                        tokio::spawn(async move {
-                            let send_result = send.await;
-                            if let Err(error) = send_result {
-                                tracing::error!(%error, "fail to response message");
-                            }
-                        }.instrument(current_span));
+                        // [PATCH: ra0x3/mcpkit-rs] Send responses inline to fix tokio 1.36 race condition
+                        // Send directly to transport instead of spawning. This ensures the response is sent immediately.
+                        let send_result = transport.send(m).await;
+                        if let Err(error) = send_result {
+                            tracing::error!(%error, "fail to response message");
+                        } else {
+                            tracing::info!("Successfully sent response to transport");
+                        }
                     }
                 }
                 Event::ProxyMessage(PeerSinkMessage::Request {
@@ -843,23 +858,23 @@ where
                             meta,
                             extensions,
                         };
-                        let current_span = tracing::Span::current();
-                        tokio::spawn(async move {
-                            let result = service
-                                .handle_request(request, context)
-                                .await;
-                            let response = match result {
-                                Ok(result) => {
-                                    tracing::debug!(%id, ?result, "response message");
-                                    JsonRpcMessage::response(result, id)
-                                }
-                                Err(error) => {
-                                    tracing::warn!(%id, ?error, "response error");
-                                    JsonRpcMessage::error(error, id)
-                                }
-                            };
-                            let _send_result = sink.send(response).await;
-                        }.instrument(current_span));
+                        // [PATCH: ra0x3/mcpkit-rs] Handle requests inline to fix tokio 1.36 race condition
+                        // Handle requests inline instead of spawning. This ensures responses are sent before the
+                        // event loop potentially blocks waiting for more input. In tokio 1.46+, spawning works fine,
+                        // but in 1.36 the spawned task might not run if the event loop is blocked on input.
+                        let result = service.handle_request(request, context).await;
+                        let response = match result {
+                            Ok(result) => {
+                                tracing::debug!(%id, ?result, "response message");
+                                JsonRpcMessage::response(result, id.clone())
+                            }
+                            Err(error) => {
+                                tracing::warn!(%id, ?error, "response error");
+                                JsonRpcMessage::error(error, id.clone())
+                            }
+                        };
+                        let _send_result = sink.send(response).await;
+                        tracing::info!("Sent response to channel for id={}", id);
                     }
                 }
                 Event::PeerMessage(JsonRpcMessage::Notification(JsonRpcNotification {
@@ -890,13 +905,12 @@ where
                             meta,
                             extensions,
                         };
-                        let current_span = tracing::Span::current();
-                        tokio::spawn(async move {
-                            let result = service.handle_notification(notification, context).await;
-                            if let Err(error) = result {
-                                tracing::warn!(%error, "Error sending notification");
-                            }
-                        }.instrument(current_span));
+                        // [PATCH: ra0x3/mcpkit-rs] Handle notifications inline to fix tokio 1.36 race condition
+                        // Handle notifications inline instead of spawning to ensure they are processed immediately.
+                        let result = service.handle_notification(notification, context).await;
+                        if let Err(error) = result {
+                            tracing::warn!(%error, "Error sending notification");
+                        }
                     }
                 }
                 Event::PeerMessage(JsonRpcMessage::Response(JsonRpcResponse {
@@ -921,6 +935,10 @@ where
                 }
             }
         };
+
+        // Give any final transport sends time to complete
+        tokio::task::yield_now().await;
+
         let sink_close_result = transport.close().await;
         if let Err(e) = sink_close_result {
             tracing::error!(%e, "fail to close sink");

@@ -8,6 +8,20 @@ use tokio::io::AsyncReadExt;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod common;
 
+/// Check if a command is available in the system PATH
+async fn command_exists(cmd: &str) -> bool {
+    tokio::process::Command::new(if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    })
+    .arg(cmd)
+    .output()
+    .await
+    .map(|output| output.status.success())
+    .unwrap_or(false)
+}
+
 async fn init() -> anyhow::Result<()> {
     let _ = tracing_subscriber::registry()
         .with(
@@ -16,6 +30,14 @@ async fn init() -> anyhow::Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .try_init();
+
+    // Skip test if uv is not available (will be caught by the test framework)
+    if !command_exists("uv").await {
+        eprintln!("Warning: uv is not installed. Skipping Python tests.");
+        eprintln!("To run these tests, install uv: https://github.com/astral-sh/uv");
+        return Err(anyhow::anyhow!("uv not available"));
+    }
+
     tokio::process::Command::new("uv")
         .args(["sync"])
         .current_dir("tests/test_with_python")

@@ -128,6 +128,12 @@ where
 
     async fn close(&mut self) -> Result<(), Self::Error> {
         let mut write = self.write.lock().await;
+        // [PATCH: ra0x3/mcpkit-rs] Flush buffered data before close to fix tokio 1.36 race condition
+        // Flush before dropping to ensure buffered data is written. This is critical for tokio 1.36
+        // where pending writes may not be flushed automatically. FramedWrite uses SinkExt::flush() to flush buffered data
+        if let Some(writer) = write.as_mut() {
+            let _ = SinkExt::flush(writer).await;
+        }
         drop(write.take());
         Ok(())
     }

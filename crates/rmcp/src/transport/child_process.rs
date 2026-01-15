@@ -1,7 +1,7 @@
 use std::process::Stdio;
 
 use futures::future::Future;
-use process_wrap::tokio::{ChildWrapper, CommandWrap};
+use process_wrap::tokio::{TokioChildWrapper, TokioCommandWrap};
 use tokio::{
     io::AsyncRead,
     process::{ChildStderr, ChildStdin, ChildStdout},
@@ -10,10 +10,9 @@ use tokio::{
 use super::{RxJsonRpcMessage, Transport, TxJsonRpcMessage, async_rw::AsyncRwTransport};
 use crate::RoleClient;
 
-const MAX_WAIT_ON_DROP_SECS: u64 = 3;
 /// The parts of a child process.
 type ChildProcessParts = (
-    Box<dyn ChildWrapper>,
+    Box<dyn TokioChildWrapper>,
     ChildStdout,
     ChildStdin,
     Option<ChildStderr>,
@@ -23,7 +22,7 @@ type ChildProcessParts = (
 /// Returns `(child, stdout, stdin, stderr)` where `stderr` is `Some` only
 /// if the process was spawned with `Stdio::piped()`.
 #[inline]
-fn child_process(mut child: Box<dyn ChildWrapper>) -> std::io::Result<ChildProcessParts> {
+fn child_process(mut child: Box<dyn TokioChildWrapper>) -> std::io::Result<ChildProcessParts> {
     let child_stdin = match child.inner_mut().stdin().take() {
         Some(stdin) => stdin,
         None => return Err(std::io::Error::other("stdin was already taken")),
@@ -42,19 +41,18 @@ pub struct TokioChildProcess {
 }
 
 pub struct ChildWithCleanup {
-    inner: Option<Box<dyn ChildWrapper>>,
+    inner: Option<Box<dyn TokioChildWrapper>>,
 }
 
 impl Drop for ChildWithCleanup {
     fn drop(&mut self) {
         // We should not use start_kill(), instead we should use kill() to avoid zombies
         if let Some(mut inner) = self.inner.take() {
-            // We don't care about the result, just try to kill it
-            tokio::spawn(async move {
-                if let Err(e) = Box::into_pin(inner.kill()).await {
-                    tracing::warn!("Error killing child process: {}", e);
-                }
-            });
+            // In Drop, we can't use async, so we use start_kill() which is sync
+            // This is a best-effort attempt to kill the process
+            if let Err(e) = inner.inner_mut().start_kill() {
+                tracing::warn!("Error killing child process: {}", e);
+            }
         }
     }
 }
@@ -87,13 +85,13 @@ impl AsyncRead for TokioChildProcessOut {
 
 impl TokioChildProcess {
     /// Convenience: spawn with default `piped` stdio
-    pub fn new(command: impl Into<CommandWrap>) -> std::io::Result<Self> {
+    pub fn new(command: tokio::process::Command) -> std::io::Result<Self> {
         let (proc, _ignored) = TokioChildProcessBuilder::new(command).spawn()?;
         Ok(proc)
     }
 
     /// Builder entry-point allowing fine-grained stdio control.
-    pub fn builder(command: impl Into<CommandWrap>) -> TokioChildProcessBuilder {
+    pub fn builder(command: tokio::process::Command) -> TokioChildProcessBuilder {
         TokioChildProcessBuilder::new(command)
     }
 
@@ -111,24 +109,43 @@ impl TokioChildProcess {
         if let Some(mut child) = self.child.inner.take() {
             self.transport.close().await?;
 
-            let wait_fut = child.wait();
-            tokio::select! {
-                _ = tokio::time::sleep(std::time::Duration::from_secs(MAX_WAIT_ON_DROP_SECS)) => {
-                    if let Err(e) = Box::into_pin(child.kill()).await {
-                        tracing::warn!("Error killing child: {e}");
-                        return Err(e);
-                    }
-                },
-                res = wait_fut => {
-                    match res {
-                        Ok(status) => {
-                            tracing::info!("Child exited gracefully {}", status);
-                        }
-                        Err(e) => {
-                            tracing::warn!("Error waiting for child: {e}");
-                            return Err(e);
-                        }
-                    }
+            // Give the child process a chance to exit gracefully
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+            // Check if process has already exited
+            match child.inner_mut().try_wait() {
+                Ok(Some(status)) => {
+                    tracing::info!("Child exited gracefully {}", status);
+                    return Ok(());
+                }
+                Ok(None) => {
+                    // Process is still running, kill it
+                    tracing::info!("Child still running, killing it");
+                }
+                Err(e) => {
+                    tracing::warn!("Error checking child status: {e}");
+                }
+            }
+
+            // Kill the process synchronously
+            if let Err(e) = child.inner_mut().start_kill() {
+                tracing::warn!("Error killing child: {e}");
+                // Don't return error as the process might have already exited
+            }
+
+            // Give it a bit more time to actually die
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+            // Final cleanup attempt
+            match child.inner_mut().try_wait() {
+                Ok(Some(status)) => {
+                    tracing::info!("Child killed successfully: {}", status);
+                }
+                Ok(None) => {
+                    tracing::warn!("Child process may still be running");
+                }
+                Err(e) => {
+                    tracing::warn!("Error in final wait: {e}");
                 }
             }
         }
@@ -136,7 +153,7 @@ impl TokioChildProcess {
     }
 
     /// Take ownership of the inner child process
-    pub fn into_inner(mut self) -> Option<Box<dyn ChildWrapper>> {
+    pub fn into_inner(mut self) -> Option<Box<dyn TokioChildWrapper>> {
         self.child.inner.take()
     }
 
@@ -152,16 +169,16 @@ impl TokioChildProcess {
 
 /// Builder for `TokioChildProcess` allowing custom `Stdio` configuration.
 pub struct TokioChildProcessBuilder {
-    cmd: CommandWrap,
+    cmd: tokio::process::Command,
     stdin: Stdio,
     stdout: Stdio,
     stderr: Stdio,
 }
 
 impl TokioChildProcessBuilder {
-    fn new(cmd: impl Into<CommandWrap>) -> Self {
+    fn new(cmd: tokio::process::Command) -> Self {
         Self {
-            cmd: cmd.into(),
+            cmd,
             stdin: Stdio::piped(),
             stdout: Stdio::piped(),
             stderr: Stdio::inherit(),
@@ -186,13 +203,15 @@ impl TokioChildProcessBuilder {
 
     /// Spawn the child process. Returns the transport plus an optional captured stderr handle.
     pub fn spawn(mut self) -> std::io::Result<(TokioChildProcess, Option<ChildStderr>)> {
+        // Configure stdio on the command
         self.cmd
-            .command_mut()
             .stdin(self.stdin)
             .stdout(self.stdout)
             .stderr(self.stderr);
 
-        let (child, stdout, stdin, stderr_opt) = child_process(self.cmd.spawn()?)?;
+        // Convert to TokioCommandWrap and spawn
+        let mut wrapped_cmd: TokioCommandWrap = self.cmd.into();
+        let (child, stdout, stdin, stderr_opt) = child_process(wrapped_cmd.spawn()?)?;
 
         let transport = AsyncRwTransport::new(stdout, stdin);
         let proc = TokioChildProcess {
@@ -239,6 +258,8 @@ mod tests {
     use tokio::process::Command;
 
     use super::*;
+
+    const MAX_WAIT_ON_DROP_SECS: u64 = 3;
 
     #[tokio::test]
     async fn test_tokio_child_process_drop() {

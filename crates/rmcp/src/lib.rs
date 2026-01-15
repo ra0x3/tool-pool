@@ -8,33 +8,49 @@ pub use error::{Error, ErrorData, RmcpError};
 
 /// Basic data types in MCP specification
 pub mod model;
+
 #[cfg(any(feature = "client", feature = "server"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "client", feature = "server"))))]
 pub mod service;
+/// WASM tool execution support and manifest types
 #[cfg(feature = "client")]
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 pub use handler::client::ClientHandler;
 #[cfg(feature = "server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub use handler::server::ServerHandler;
 #[cfg(feature = "server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub use handler::server::wrapper::Json;
 #[cfg(any(feature = "client", feature = "server"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "client", feature = "server"))))]
 pub use service::{Peer, Service, ServiceError, ServiceExt};
 #[cfg(feature = "client")]
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 pub use service::{RoleClient, serve_client};
 #[cfg(feature = "server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub use service::{RoleServer, serve_server};
 
 pub mod handler;
+#[cfg(feature = "server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub mod task_manager;
 pub mod transport;
 
 // re-export
 #[cfg(all(feature = "macros", feature = "server"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "macros", feature = "server"))))]
 pub use pastey::paste;
 #[cfg(all(feature = "macros", feature = "server"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "macros", feature = "server"))))]
 pub use rmcp_macros::*;
-#[cfg(any(feature = "macros", feature = "server"))]
+#[cfg(feature = "schemars")]
+#[cfg_attr(docsrs, doc(cfg(feature = "schemars")))]
 pub use schemars;
 #[cfg(feature = "macros")]
+#[cfg_attr(docsrs, doc(cfg(feature = "macros")))]
 pub use serde;
 #[cfg(feature = "macros")]
+#[cfg_attr(docsrs, doc(cfg(feature = "macros")))]
 pub use serde_json;

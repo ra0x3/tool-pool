@@ -1,0 +1,29 @@
+[package]
+name = "wasm-calculator"
+edition = { workspace = true }
+version = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+description = { workspace = true }
+keywords = { workspace = true }
+homepage = { workspace = true }
+categories = { workspace = true }
+readme = { workspace = true }
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rmcp = { workspace = true, features = ["server", "macros", "schemars"] }
+schemars = "1.0"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "=1.36.0", features = ["rt", "io-util", "sync", "macros", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "std",
+    "fmt",
+] }
+wasi = { version = "0.14.2" }

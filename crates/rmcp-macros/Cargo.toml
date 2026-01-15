@@ -1,5 +1,4 @@
 
-
 [package]
 name = "rmcp-macros"
 license = { workspace = true }
@@ -15,12 +14,12 @@ documentation = "https://docs.rs/rmcp-macros"
 [lib]
 proc-macro = true
 
-[dependencies]
-syn = {version = "2", features = ["full"]}
-quote = "1"
-proc-macro2 = "1"
-serde_json = "1.0"
-darling = { version = "0.23" }
-
 [features]
+
+[dependencies]
+darling = { version = "0.23" }
+proc-macro2 = "1"
+quote = "1"
+serde_json = "1.0"
+syn = { version = "2", features = ["full"] }
 [dev-dependencies]

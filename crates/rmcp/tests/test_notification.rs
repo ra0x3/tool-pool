@@ -1,3 +1,6 @@
+#![cfg(feature = "server")]
+#![cfg(all(feature = "client", feature = "server"))]
+
 use std::sync::Arc;
 
 use rmcp::{

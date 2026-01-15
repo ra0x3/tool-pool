@@ -1,3 +1,5 @@
+#![cfg(feature = "schemars")]
+
 //cargo test --test test_elicitation --features "client server"
 
 use rmcp::{model::*, service::*};

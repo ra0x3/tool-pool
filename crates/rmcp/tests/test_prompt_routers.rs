@@ -1,3 +1,5 @@
+#![cfg(feature = "schemars")]
+
 use std::collections::HashMap;
 
 use futures::future::BoxFuture;

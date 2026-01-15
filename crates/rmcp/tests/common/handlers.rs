@@ -3,14 +3,17 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[cfg(feature = "client")]
+use rmcp::{ClientHandler, RoleClient};
 use rmcp::{
-    ClientHandler, ErrorData as McpError, RoleClient, RoleServer, ServerHandler,
+    ErrorData as McpError, RoleServer, ServerHandler,
     model::*,
     service::{NotificationContext, RequestContext},
 };
 use serde_json::json;
 use tokio::sync::Notify;
 
+#[cfg(feature = "client")]
 #[derive(Clone)]
 pub struct TestClientHandler {
     pub honor_this_server: bool,
@@ -19,6 +22,7 @@ pub struct TestClientHandler {
     pub received_messages: Arc<Mutex<Vec<LoggingMessageNotificationParam>>>,
 }
 
+#[cfg(feature = "client")]
 impl TestClientHandler {
     #[allow(dead_code)]
     pub fn new(honor_this_server: bool, honor_all_servers: bool) -> Self {
@@ -46,6 +50,7 @@ impl TestClientHandler {
     }
 }
 
+#[cfg(feature = "client")]
 impl ClientHandler for TestClientHandler {
     async fn create_message(
         &self,
@@ -87,7 +92,6 @@ impl ClientHandler for TestClientHandler {
         let received_messages = self.received_messages.clone();
 
         async move {
-            println!("Client: Received log message: {:?}", params);
             let mut messages = received_messages.lock().unwrap();
             messages.push(params);
             receive_signal.notify_one();
@@ -117,63 +121,69 @@ impl ServerHandler for TestServer {
         request: SetLevelRequestParams,
         context: RequestContext<RoleServer>,
     ) -> impl Future<Output = Result<(), McpError>> + Send + '_ {
-        let peer = context.peer;
+        let peer = context.peer.clone();
         async move {
-            let (data, logger) = match request.level {
-                LoggingLevel::Error => (
-                    serde_json::json!({
-                        "message": "Failed to process request",
-                        "error_code": "E1001",
-                        "error_details": "Connection timeout",
-                        "timestamp": chrono::Utc::now().to_rfc3339(),
-                    }),
-                    Some("error_handler".to_string()),
-                ),
-                LoggingLevel::Debug => (
-                    serde_json::json!({
-                        "message": "Processing request",
-                        "function": "handle_request",
-                        "line": 42,
-                        "context": {
-                            "request_id": "req-123",
-                            "user_id": "user-456"
-                        },
-                        "timestamp": chrono::Utc::now().to_rfc3339(),
-                    }),
-                    Some("debug_logger".to_string()),
-                ),
-                LoggingLevel::Info => (
-                    serde_json::json!({
-                        "message": "System status update",
-                        "status": "healthy",
-                        "metrics": {
-                            "requests_per_second": 150,
-                            "average_latency_ms": 45,
-                            "error_rate": 0.01
-                        },
-                        "timestamp": chrono::Utc::now().to_rfc3339(),
-                    }),
-                    Some("monitoring".to_string()),
-                ),
-                _ => (
-                    serde_json::json!({
-                        "message": format!("Message at level {:?}", request.level),
-                        "timestamp": chrono::Utc::now().to_rfc3339(),
-                    }),
-                    None,
-                ),
-            };
+            // [PATCH: ra0x3/mcpkit-rs] Send logging notifications asynchronously to fix tokio 1.36 deadlock
+            // Sending notifications synchronously within a request handler causes a deadlock where the client
+            // waits for the response while the server tries to send a notification, but the transport can't
+            // process the notification until the response is sent. We spawn a task to send the notification
+            // asynchronously after returning the response immediately.
+            let level = request.level;
+            tokio::spawn(async move {
+                let (data, logger) = match level {
+                    LoggingLevel::Error => (
+                        serde_json::json!({
+                            "message": "Failed to process request",
+                            "error_code": "E1001",
+                            "error_details": "Connection timeout",
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                        }),
+                        Some("error_handler".to_string()),
+                    ),
+                    LoggingLevel::Debug => (
+                        serde_json::json!({
+                            "message": "Processing request",
+                            "function": "handle_request",
+                            "line": 42,
+                            "context": {
+                                "request_id": "req-123",
+                                "user_id": "user-456"
+                            },
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                        }),
+                        Some("debug_logger".to_string()),
+                    ),
+                    LoggingLevel::Info => (
+                        serde_json::json!({
+                            "message": "System status update",
+                            "status": "healthy",
+                            "metrics": {
+                                "requests_per_second": 150,
+                                "average_latency_ms": 45,
+                                "error_rate": 0.01
+                            },
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                        }),
+                        Some("monitoring".to_string()),
+                    ),
+                    _ => (
+                        serde_json::json!({
+                            "message": format!("Message at level {:?}", level),
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                        }),
+                        None,
+                    ),
+                };
 
-            if let Err(e) = peer
-                .notify_logging_message(LoggingMessageNotificationParam {
-                    level: request.level,
-                    data,
-                    logger,
-                })
-                .await
-            {
-                panic!("Failed to send notification: {}", e);
-            }
+                let _ = peer
+                    .notify_logging_message(LoggingMessageNotificationParam {
+                        level,
+                        data,
+                        logger,
+                    })
+                    .await;
+            });
+
             Ok(())
         }
     }

@@ -1,16 +1,23 @@
+#[cfg(any(feature = "client", feature = "server"))]
 use std::sync::Arc;
 
+#[cfg(any(feature = "client", feature = "server"))]
 use futures::{Sink, Stream};
+#[cfg(any(feature = "client", feature = "server"))]
 use tokio::sync::Mutex;
 
+#[cfg(any(feature = "client", feature = "server"))]
 use super::{IntoTransport, Transport};
+#[cfg(any(feature = "client", feature = "server"))]
 use crate::service::{RxJsonRpcMessage, ServiceRole, TxJsonRpcMessage};
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub struct SinkStreamTransport<Si, St> {
     stream: St,
     sink: Arc<Mutex<Si>>,
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 impl<Si, St> SinkStreamTransport<Si, St> {
     pub fn new(sink: Si, stream: St) -> Self {
         Self {
@@ -20,6 +27,7 @@ impl<Si, St> SinkStreamTransport<Si, St> {
     }
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 impl<Role: ServiceRole, Si, St> Transport<Role> for SinkStreamTransport<Si, St>
 where
     St: Send + Stream<Item = RxJsonRpcMessage<Role>> + Unpin,
@@ -50,8 +58,10 @@ where
     }
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub enum TransportAdapterSinkStream {}
 
+#[cfg(any(feature = "client", feature = "server"))]
 impl<Role, Si, St> IntoTransport<Role, Si::Error, TransportAdapterSinkStream> for (Si, St)
 where
     Role: ServiceRole,
@@ -64,7 +74,9 @@ where
     }
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub enum TransportAdapterAsyncCombinedRW {}
+#[cfg(any(feature = "client", feature = "server"))]
 impl<Role, S> IntoTransport<Role, S::Error, TransportAdapterAsyncCombinedRW> for S
 where
     Role: ServiceRole,

@@ -1,3 +1,5 @@
+#![cfg(all(feature = "server", feature = "macros"))]
+
 #[cfg(test)]
 mod tests {
     use rmcp::{ServerHandler, handler::server::router::tool::ToolRouter, tool, tool_handler};

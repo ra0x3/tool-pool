@@ -1,3 +1,6 @@
+//cargo test --test test_sampling --features "client server"
+#![cfg(all(feature = "client", feature = "server"))]
+
 mod common;
 
 use anyhow::Result;

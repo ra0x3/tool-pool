@@ -1,14 +1,19 @@
 //! Common utilities shared between tool and prompt handlers
 
+#[cfg(feature = "schemars")]
 use std::{any::TypeId, collections::HashMap, sync::Arc};
 
+#[cfg(feature = "schemars")]
 use schemars::JsonSchema;
 
-use crate::{
-    RoleServer, model::JsonObject, schemars::generate::SchemaSettings, service::RequestContext,
-};
+#[cfg(feature = "schemars")]
+use crate::model::JsonObject;
+#[cfg(feature = "schemars")]
+use crate::schemars::generate::SchemaSettings;
+use crate::{RoleServer, service::RequestContext};
 
 /// Generates a JSON schema for a type
+#[cfg(feature = "schemars")]
 pub fn schema_for_type<T: JsonSchema + std::any::Any>() -> Arc<JsonObject> {
     thread_local! {
         static CACHE_FOR_TYPE: std::sync::RwLock<HashMap<TypeId, Arc<JsonObject>>> = Default::default();
@@ -47,6 +52,7 @@ pub fn schema_for_type<T: JsonSchema + std::any::Any>() -> Arc<JsonObject> {
 }
 
 /// Generate and validate a JSON schema for outputSchema (must have root type "object").
+#[cfg(feature = "schemars")]
 pub fn schema_for_output<T: JsonSchema + std::any::Any>() -> Result<Arc<JsonObject>, String> {
     thread_local! {
         static CACHE_FOR_OUTPUT: std::sync::RwLock<HashMap<TypeId, Result<Arc<JsonObject>, String>>> = Default::default();
@@ -183,8 +189,10 @@ pub trait AsRequestContext {
     fn as_request_context_mut(&mut self) -> &mut RequestContext<RoleServer>;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "schemars"))]
 mod tests {
+    use schemars::JsonSchema;
+
     use super::*;
 
     #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]

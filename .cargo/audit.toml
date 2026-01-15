@@ -1,0 +1,7 @@
+[advisories]
+# Ignored vulnerabilities
+
+# RUSTSEC-2025-0118: wasmtime - Unsound API access to WebAssembly shared linear memory
+# Cannot upgrade wasmtime to 36.0.3+ due to tokio 1.36 constraint
+# wasmtime 36+ requires tokio 1.43+, but we're pinned to 1.36 for compatibility
+ignore = ["RUSTSEC-2025-0118"]

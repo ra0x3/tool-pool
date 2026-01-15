@@ -6,38 +6,92 @@ on:
     tags:
       - 'release-*'
   pull_request:
-    branches: [ main, release ]
+
+# Cancel in-progress workflows when a new commit is pushed to the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
   ARTIFACT_DIR: release-artifacts
 
+# Job Dependency Chain:
+# cancel-previous-runs (always runs first)
+#   └─► stage-1: spellcheck, lint-commits, doc
+#         └─► stage-2: fmt, cargo-sort, clippy, security-audit
+#               └─► stage-3: build (matrix), test (matrix), example-test
+#                     └─► stage-4: coverage
+#                           └─► stage-5: ci-success
+
 jobs:
-  commit-lint:
+  # Stage 0: Cancel previous runs
+  cancel-previous-runs:
+    name: Cancel Previous Runs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.12.1
+        with:
+          access_token: ${{ github.token }}
+
+  # Stage 1: Basic checks (spellcheck, lint commit messages, generate docs)
+  spellcheck:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    needs: [cancel-previous-runs]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Spell Check Repo
+        uses: crate-ci/typos@master
+
+  lint-commits:
     name: Lint Commit Messages
     runs-on: ubuntu-latest
+    needs: [cancel-previous-runs]
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          
+
       - name: Install commitlint
         run: |
           npm install --save-dev @commitlint/cli @commitlint/config-conventional
           echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
-          
+
       - name: Lint commit messages
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
+  doc:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: [cancel-previous-runs]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Generate documentation
+        run: |
+          cargo +nightly doc --no-deps -p rmcp -p rmcp-macros --all-features
+        env:
+          RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+
+  # Stage 2: Code formatting and linting
   fmt:
     name: Code Formatting
     runs-on: ubuntu-latest
+    needs: [spellcheck, lint-commits, doc]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     steps:
       - uses: actions/checkout@v6
 
@@ -47,9 +101,38 @@ jobs:
       - name: Check formatting
         run: cargo +nightly fmt --all -- --check
 
-  clippy:
-    name: Lint with Clippy
+  cargo-sort:
+    name: Check Cargo.toml Sorting
     runs-on: ubuntu-latest
+    needs: [spellcheck, lint-commits, doc]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install cargo-sort
+        run: cargo install cargo-sort
+
+      - name: Check Cargo.toml sorting
+        run: cargo sort --check --workspace
+
+  clippy:
+    name: Lint with Clippy ${{ matrix.features || 'default features' }}
+    runs-on: ubuntu-latest
+    needs: [fmt, cargo-sort]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    strategy:
+      matrix:
+        features:
+          - ''  # default features
+          - '--all-features'
+          - '--no-default-features --features client'
+          - '--no-default-features --features server'
+          - '--no-default-features --features macros,server'
+          - '--features client'
+          - '--features server'
+          - '--features client,transport-child-process'
+          - '--features server,transport-streamable-http-server'
+          - '--features server,wasm-tools'
     steps:
       - uses: actions/checkout@v6
 
@@ -58,51 +141,66 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-  
-  spelling:
-    name: spell check with typos
+      - name: Run clippy ${{ matrix.features || 'default features' }}
+        run: cargo clippy --all-targets ${{ matrix.features }} -- -D warnings
+
+  security-audit:
+    name: Security Audit
     runs-on: ubuntu-latest
+    needs: [fmt, cargo-sort]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     steps:
-    - uses: actions/checkout@v6
-    - name: Spell Check Repo
-      uses: crate-ci/typos@master
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo-audit
+        run: cargo audit --ignore RUSTSEC-2025-0118
+
+  # Stage 3: Build and test
+  build:
+    name: Build ${{ matrix.features || 'default features' }}
+    runs-on: ubuntu-latest
+    needs: [clippy, security-audit]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    strategy:
+      matrix:
+        features:
+          - ''  # default features
+          - '--all-features'
+          - '--no-default-features --features client'
+          - '--no-default-features --features server'
+          - '--no-default-features --features macros,server'
+          - '--features client'
+          - '--features server'
+          - '--features client,transport-child-process'
+          - '--features server,transport-streamable-http-server'
+          - '--features server,wasm-tools'
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo build ${{ matrix.features || 'default features' }}
+        run: cargo build ${{ matrix.features }}
 
   test:
-    name: Run Tests
+    name: Run Tests ${{ matrix.features || 'default features' }}
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      
-      # install nodejs
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        
-      - name: Set up Python
-        run: uv python install
-        
-      - name: Create venv for python
-        run: uv venv
-        
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Run tests
-        run: cargo test --all-features
-  
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    needs: [clippy, security-audit]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    strategy:
+      matrix:
+        features: ['--features schemars,macros,server,client', '--all-features']
     steps:
       - uses: actions/checkout@v6
 
@@ -111,33 +209,29 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          
+
       - name: Install uv
         uses: astral-sh/setup-uv@v7
-        
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        
+
       - name: Set up Python
         run: uv python install
-        
+
       - name: Create venv for python
         run: uv venv
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-llvm-cov
-        run: cargo install cargo-llvm-cov
-
-      - name: Install llvm-tools-preview
-        run: rustup component add llvm-tools-preview
-
-      - name: Run tests with coverage
-        run: cargo llvm-cov --all-features
+      - name: cargo test ${{ matrix.features }}
+        run: cargo test ${{ matrix.features }}
 
   example-test:
-    name: Example test
+    name: Example Test
     runs-on: ubuntu-latest
+    needs: [clippy, security-audit]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     steps:
       - uses: actions/checkout@v6
 
@@ -170,8 +264,17 @@ jobs:
           for dir in examples/*/ ; do
             if [ -f "$dir/Cargo.toml" ]; then
               echo "Building $dir"
-
-              if [[ "$dir" == *"wasi"* ]]; then
+              # Skip rig-integration as it's excluded from workspace and has conflicting dependencies
+              if [[ "$dir" == *"rig-integration"* ]]; then
+                echo "Skipping rig-integration (excluded from workspace)"
+                continue
+              fi
+              # Skip wasm-fullstack as it requires WasmEdge-specific patches
+              if [[ "$dir" == *"wasm-fullstack"* ]]; then
+                echo "Skipping wasm-fullstack (requires WasmEdge runtime with special patches)"
+                continue
+              fi
+              if [[ "$dir" == *"wasi"* ]] || [[ "$dir" == *"wasm"* ]]; then
                 cargo build --manifest-path "$dir/Cargo.toml" --target wasm32-wasip2
               else
                 cargo build --manifest-path "$dir/Cargo.toml" --all-features --tests
@@ -184,52 +287,78 @@ jobs:
           # Tests are run for each subdirectory in the example directory.
           for dir in examples/*/ ; do
             if [ -f "$dir/Cargo.toml" ]; then
-              if [[ "$dir" != *"wasi"* ]]; then
-                echo "Testing $dir"
-                cargo test --manifest-path "$dir/Cargo.toml" --all-features
+              # Skip rig-integration and wasi/wasm examples
+              if [[ "$dir" == *"rig-integration"* ]] || [[ "$dir" == *"wasi"* ]] || [[ "$dir" == *"wasm"* ]]; then
+                continue
               fi
+              echo "Testing $dir"
+              cargo test --manifest-path "$dir/Cargo.toml" --all-features
             fi
           done
 
-  security_audit:
-    name: Security Audit
+  # Stage 4: Code coverage
+  coverage:
+    name: Code Coverage
     runs-on: ubuntu-latest
+    needs: [build, test, example-test]
+    if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
+
+      # install nodejs
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Create venv for python
+        run: uv venv
+
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      
-      - name: Run cargo-audit
-        run: cargo audit
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
 
-  doc:
-    name: Generate Documentation
+      - name: Install llvm-tools-preview
+        run: rustup component add llvm-tools-preview
+
+      - name: Run tests with coverage
+        run: cargo llvm-cov --all-features
+
+  # Stage 5: CI Success (for branch protection)
+  ci-success:
+    name: CI Success
     runs-on: ubuntu-latest
+    needs: [coverage]
+    if: always()
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@nightly
-        
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Generate documentation
+      - name: Check if all required jobs succeeded
         run: |
-          cargo +nightly doc --no-deps -p rmcp -p rmcp-macros --all-features
-        env:
-          RUSTDOCFLAGS: --cfg docsrs -Dwarnings 
+          # Check all critical job results
+          if [[ "${{ needs.coverage.result }}" != "success" ]]; then
+            echo "Required jobs did not all succeed"
+            echo "Coverage: ${{ needs.coverage.result }}"
+            exit 1
+          fi
+          echo "All required jobs succeeded!"
 
+  # Release job (unchanged)
   release:
     name: Release crates
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/tags/release')
-    needs: [fmt, clippy, test]
+    needs: [ci-success]
     steps:
       # Since this job has access to the `CRATES_TOKEN`, it's probably a good
       # idea to be extra careful about what Actions are being called. The reason
@@ -241,27 +370,27 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Update Rust
-        run: | 
+        run: |
           rustup update stable
           rustup default stable
 
       - name: Cargo login
         run: cargo login ${{ secrets.CRATES_TOKEN }}
-        
+
       - name: Publish macros dry run
         run: cargo publish -p rmcp-macros --dry-run
         continue-on-error: true
-        
+
       - name: Publish rmcp dry run
         run: cargo publish -p rmcp --dry-run
         continue-on-error: true
-        
+
       - name: Publish macro
         if: ${{ startsWith(github.ref, 'refs/tags/release') }}
-        continue-on-error: true 
+        continue-on-error: true
         run: cargo publish -p rmcp-macros
-        
+
       - name: Publish rmcp
         if: ${{ startsWith(github.ref, 'refs/tags/release') }}
-        continue-on-error: true 
-        run: cargo publish -p rmcp 
+        continue-on-error: true
+        run: cargo publish -p rmcp
