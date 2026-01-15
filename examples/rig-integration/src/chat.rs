@@ -39,9 +39,9 @@ where
 
         while let Some(message) = response.next().await {
             match message {
-                Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(
-                    Text { text },
-                ))) => {
+                Ok(MultiTurnStreamItem::StreamAssistantItem(
+                    StreamedAssistantContent::Text(Text { text }),
+                )) => {
                     message_buf.push_str(&text);
                     output_agent(&text, &mut output).await?;
                 }
@@ -58,8 +58,11 @@ where
                 }
                 Ok(MultiTurnStreamItem::StreamUserItem(user_content)) => {
                     // Tool results are streamed back as user items
-                    stream_output_toolcall(format!("Tool result: {:?}", user_content), &mut output)
-                        .await?;
+                    stream_output_toolcall(
+                        format!("Tool result: {:?}", user_content),
+                        &mut output,
+                    )
+                    .await?;
                 }
                 Ok(MultiTurnStreamItem::FinalResponse(final_response)) => {
                     tracing::info!("Final response received: {:?}", final_response);

@@ -6,8 +6,8 @@ use std::{
 
 use futures::Stream;
 use rmcp::{
-    ErrorData as McpError, RoleServer, ServerHandler, handler::server::tool::ToolRouter, model::*,
-    service::RequestContext, tool, tool_handler, tool_router,
+    ErrorData as McpError, RoleServer, ServerHandler, handler::server::tool::ToolRouter,
+    model::*, service::RequestContext, tool, tool_handler, tool_router,
 };
 use serde_json::json;
 use tokio_stream::StreamExt;

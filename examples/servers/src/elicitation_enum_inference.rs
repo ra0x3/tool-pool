@@ -18,7 +18,8 @@ use rmcp::{
     service::{RequestContext, RoleServer},
     tool, tool_handler, tool_router,
     transport::{
-        StreamableHttpService, streamable_http_server::session::local::LocalSessionManager,
+        StreamableHttpService,
+        streamable_http_server::session::local::LocalSessionManager,
     },
 };
 use schemars::JsonSchema;
@@ -170,7 +171,10 @@ impl ServerHandler for ElicitationEnumFormServer {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
-        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| "debug".to_string().into()))
+        .with(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "debug".to_string().into()),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 

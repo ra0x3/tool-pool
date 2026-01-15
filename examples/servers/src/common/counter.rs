@@ -13,7 +13,8 @@ use rmcp::{
     service::RequestContext,
     task_handler,
     task_manager::{
-        OperationDescriptor, OperationMessage, OperationProcessor, OperationResultTransport,
+        OperationDescriptor, OperationMessage, OperationProcessor,
+        OperationResultTransport,
     },
     tool, tool_handler, tool_router,
 };
@@ -121,7 +122,10 @@ impl Counter {
     }
 
     #[tool(description = "Repeat what you say")]
-    fn echo(&self, Parameters(object): Parameters<JsonObject>) -> Result<CallToolResult, McpError> {
+    fn echo(
+        &self,
+        Parameters(object): Parameters<JsonObject>,
+    ) -> Result<CallToolResult, McpError> {
         Ok(CallToolResult::success(vec![Content::text(
             serde_json::Value::Object(object).to_string(),
         )]))
@@ -271,7 +275,9 @@ impl ServerHandler for Counter {
         _request: InitializeRequestParam,
         context: RequestContext<RoleServer>,
     ) -> Result<InitializeResult, McpError> {
-        if let Some(http_request_part) = context.extensions.get::<axum::http::request::Parts>() {
+        if let Some(http_request_part) =
+            context.extensions.get::<axum::http::request::Parts>()
+        {
             let initialize_headers = &http_request_part.headers;
             let initialize_uri = &http_request_part.uri;
             tracing::info!(?initialize_headers, %initialize_uri, "initialize from http server");

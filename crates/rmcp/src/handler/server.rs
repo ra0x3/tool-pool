@@ -66,7 +66,10 @@ impl<H: ServerHandler> Service<RoleServer> for H {
                 .map(ServerResult::empty),
             ClientRequest::CallToolRequest(request) => {
                 if request.params.task.is_some() {
-                    tracing::info!("Enqueueing task for tool call: {}", request.params.name);
+                    tracing::info!(
+                        "Enqueueing task for tool call: {}",
+                        request.params.name
+                    );
                     self.enqueue_task(request.params, context.clone())
                         .await
                         .map(ServerResult::CreateTaskResult)
@@ -201,7 +204,8 @@ pub trait ServerHandler: Sized + Send + Sync + 'static {
         &self,
         request: Option<PaginatedRequestParam>,
         context: RequestContext<RoleServer>,
-    ) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + Send + '_ {
+    ) -> impl Future<Output = Result<ListResourceTemplatesResult, McpError>> + Send + '_
+    {
         std::future::ready(Ok(ListResourceTemplatesResult::default()))
     }
     fn read_resource(

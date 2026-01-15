@@ -1,7 +1,7 @@
 /// Integration tests for resource_link support in both tools and prompts
 use rmcp::model::{
-    AnnotateAble, CallToolResult, Content, PromptMessage, PromptMessageContent, PromptMessageRole,
-    RawResource, Resource,
+    AnnotateAble, CallToolResult, Content, PromptMessage, PromptMessageContent,
+    PromptMessageRole, RawResource, Resource,
 };
 
 #[test]
@@ -20,8 +20,10 @@ fn test_tool_and_prompt_resource_link_compatibility() {
     assert!(tool_json.contains("\"type\":\"resource_link\""));
 
     // Test 2: Prompt returning a resource link
-    let prompt_message =
-        PromptMessage::new_resource_link(PromptMessageRole::Assistant, resource_annotated.clone());
+    let prompt_message = PromptMessage::new_resource_link(
+        PromptMessageRole::Assistant,
+        resource_annotated.clone(),
+    );
 
     let prompt_json = serde_json::to_string(&prompt_message).unwrap();
     assert!(prompt_json.contains("\"type\":\"resource_link\""));
@@ -54,13 +56,15 @@ fn test_resource_link_roundtrip() {
     // Test that resource links can be serialized and deserialized correctly
     // in both tool results and prompt messages
 
-    let mut resource = RawResource::new("https://api.example.com/resource", "API Resource");
+    let mut resource =
+        RawResource::new("https://api.example.com/resource", "API Resource");
     resource.description = Some("External API resource".to_string());
     resource.mime_type = Some("application/json".to_string());
     resource.size = Some(2048);
 
     // Test with tool result
-    let tool_result = CallToolResult::success(vec![Content::resource_link(resource.clone())]);
+    let tool_result =
+        CallToolResult::success(vec![Content::resource_link(resource.clone())]);
 
     let tool_json = serde_json::to_string(&tool_result).unwrap();
     let tool_deserialized: CallToolResult = serde_json::from_str(&tool_json).unwrap();
@@ -114,7 +118,10 @@ fn test_mixed_content_in_prompts_and_tools() {
         Content::text("Processing complete. Found documents:"),
         Content::resource_link(resource1.clone()),
         Content::resource_link(resource2.clone()),
-        Content::embedded_text("summary://result", "Both documents processed successfully"),
+        Content::embedded_text(
+            "summary://result",
+            "Both documents processed successfully",
+        ),
     ]);
 
     assert_eq!(tool_result.content.len(), 4);

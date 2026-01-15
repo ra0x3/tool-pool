@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use futures::future::BoxFuture;
 use rmcp::{
     ServerHandler,
-    handler::server::{router::tool::ToolRouter, tool::CallToolHandler, wrapper::Parameters},
+    handler::server::{
+        router::tool::ToolRouter, tool::CallToolHandler, wrapper::Parameters,
+    },
 };
 
 #[derive(Debug, Default)]
@@ -51,11 +53,12 @@ fn async_function2<T>(_callee: &TestHandler<T>) -> BoxFuture<'_, ()> {
 
 #[test]
 fn test_tool_router() {
-    let test_tool_router: ToolRouter<TestHandler<()>> = ToolRouter::<TestHandler<()>>::new()
-        .with_route((async_function_tool_attr(), async_function))
-        .with_route((async_function2_tool_attr(), async_function2))
-        + TestHandler::<()>::test_router_1()
-        + TestHandler::<()>::test_router_2();
+    let test_tool_router: ToolRouter<TestHandler<()>> =
+        ToolRouter::<TestHandler<()>>::new()
+            .with_route((async_function_tool_attr(), async_function))
+            .with_route((async_function2_tool_attr(), async_function2))
+            + TestHandler::<()>::test_router_1()
+            + TestHandler::<()>::test_router_2();
     let tools = test_tool_router.list_all();
     assert_eq!(tools.len(), 4);
     assert_handler(TestHandler::<()>::async_method);

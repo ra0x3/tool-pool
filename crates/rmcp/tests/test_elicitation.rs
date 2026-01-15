@@ -68,7 +68,8 @@ async fn test_elicitation_request_param_serialization() {
     assert_eq!(json, expected);
 
     // Test deserialization
-    let deserialized: CreateElicitationRequestParam = serde_json::from_value(expected).unwrap();
+    let deserialized: CreateElicitationRequestParam =
+        serde_json::from_value(expected).unwrap();
     assert_eq!(deserialized.message, request_param.message);
     assert_eq!(
         deserialized.requested_schema,
@@ -256,7 +257,8 @@ async fn test_elicitation_performance() {
     // Serialize/deserialize 1000 times
     for _ in 0..1000 {
         let json = serde_json::to_value(&request).unwrap();
-        let _deserialized: CreateElicitationRequestParam = serde_json::from_value(json).unwrap();
+        let _deserialized: CreateElicitationRequestParam =
+            serde_json::from_value(json).unwrap();
     }
 
     let duration = start.elapsed();
@@ -406,7 +408,12 @@ async fn test_elicitation_structured_schemas() {
         .optional_bool("newsletter", false)
         .required_enum_schema(
             "country",
-            EnumSchema::builder(vec!["US".to_string(), "UK".to_string(), "CA".to_string()]).build(),
+            EnumSchema::builder(vec![
+                "US".to_string(),
+                "UK".to_string(),
+                "CA".to_string(),
+            ])
+            .build(),
         )
         .description("User registration information")
         .build()
@@ -419,7 +426,8 @@ async fn test_elicitation_structured_schemas() {
 
     // Test that complex schemas serialize/deserialize correctly
     let json = serde_json::to_value(&request).unwrap();
-    let deserialized: CreateElicitationRequestParam = serde_json::from_value(json).unwrap();
+    let deserialized: CreateElicitationRequestParam =
+        serde_json::from_value(json).unwrap();
 
     assert_eq!(deserialized.message, "Please provide your user information");
     assert_eq!(deserialized.requested_schema.properties.len(), 5);
@@ -613,7 +621,8 @@ mod typed_elicitation_tests {
     #[tokio::test]
     async fn test_nested_structure_schema() {
         // Test that nested structures generate proper schemas
-        let preferences_schema = rmcp::handler::server::tool::schema_for_type::<UserPreferences>();
+        let preferences_schema =
+            rmcp::handler::server::tool::schema_for_type::<UserPreferences>();
 
         // Verify basic structure
         assert!(preferences_schema.contains_key("type"));
@@ -661,7 +670,8 @@ async fn test_elicitation_multi_select_enum() {
 
     // Test that complex schemas serialize/deserialize correctly
     let json = serde_json::to_value(&request).unwrap();
-    let deserialized: CreateElicitationRequestParam = serde_json::from_value(json).unwrap();
+    let deserialized: CreateElicitationRequestParam =
+        serde_json::from_value(json).unwrap();
 
     assert_eq!(deserialized.message, "Please provide your user information");
     assert_eq!(deserialized.requested_schema.properties.len(), 1);
@@ -690,30 +700,32 @@ async fn test_elicitation_multi_select_enum() {
     {
         assert_eq!(
             schema,
-            &EnumSchema::Multi(MultiSelectEnumSchema::Titled(TitledMultiSelectEnumSchema {
-                type_: ArrayTypeConst,
-                title: None,
-                description: None,
-                min_items: Some(1),
-                max_items: Some(2),
-                items: TitledItems {
-                    any_of: vec![
-                        ConstTitle {
-                            const_: "A".to_string(),
-                            title: "A name".to_string()
-                        },
-                        ConstTitle {
-                            const_: "B".to_string(),
-                            title: "B name".to_string()
-                        },
-                        ConstTitle {
-                            const_: "C".to_string(),
-                            title: "C name".to_string()
-                        }
-                    ],
-                },
-                default: None
-            }))
+            &EnumSchema::Multi(MultiSelectEnumSchema::Titled(
+                TitledMultiSelectEnumSchema {
+                    type_: ArrayTypeConst,
+                    title: None,
+                    description: None,
+                    min_items: Some(1),
+                    max_items: Some(2),
+                    items: TitledItems {
+                        any_of: vec![
+                            ConstTitle {
+                                const_: "A".to_string(),
+                                title: "A name".to_string()
+                            },
+                            ConstTitle {
+                                const_: "B".to_string(),
+                                title: "B name".to_string()
+                            },
+                            ConstTitle {
+                                const_: "C".to_string(),
+                                title: "C name".to_string()
+                            }
+                        ],
+                    },
+                    default: None
+                }
+            ))
         )
     }
 }
@@ -742,7 +754,8 @@ async fn test_elicitation_single_select_enum() {
 
     // Test that complex schemas serialize/deserialize correctly
     let json = serde_json::to_value(&request).unwrap();
-    let deserialized: CreateElicitationRequestParam = serde_json::from_value(json).unwrap();
+    let deserialized: CreateElicitationRequestParam =
+        serde_json::from_value(json).unwrap();
     assert_eq!(deserialized.message, "Please provide your user information");
     assert_eq!(deserialized.requested_schema.properties.len(), 1);
     assert!(
@@ -827,11 +840,12 @@ async fn test_elicitation_direction_server_to_client() {
     assert_eq!(serialized["requestedSchema"]["type"], "object");
 
     // Test that elicitation requests are part of ServerRequest
-    let _server_request = ServerRequest::CreateElicitationRequest(CreateElicitationRequest {
-        method: ElicitationCreateRequestMethod,
-        params: elicitation_request,
-        extensions: Default::default(),
-    });
+    let _server_request =
+        ServerRequest::CreateElicitationRequest(CreateElicitationRequest {
+            method: ElicitationCreateRequestMethod,
+            params: elicitation_request,
+            extensions: Default::default(),
+        });
 
     // Test that client can respond with elicitation results
     let client_result = ClientResult::CreateElicitationResult(CreateElicitationResult {
@@ -859,7 +873,9 @@ async fn test_elicitation_json_rpc_direction() {
     let schema = ElicitationSchema::builder()
         .property(
             "continue",
-            PrimitiveSchema::Boolean(BooleanSchema::new().description("Do you want to continue?")),
+            PrimitiveSchema::Boolean(
+                BooleanSchema::new().description("Do you want to continue?"),
+            ),
         )
         .build()
         .unwrap();
@@ -1120,7 +1136,8 @@ async fn test_capability_checking_logic() {
             icons: None,
         },
     };
-    let supports_elicitation = client_without_capability.capabilities.elicitation.is_some();
+    let supports_elicitation =
+        client_without_capability.capabilities.elicitation.is_some();
     assert!(!supports_elicitation);
 }
 

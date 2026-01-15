@@ -115,7 +115,8 @@ impl ServerHandler for ElicitationServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation::from_build_env(),
             instructions: Some(
-                "Simple server demonstrating elicitation for user name collection".to_string(),
+                "Simple server demonstrating elicitation for user name collection"
+                    .to_string(),
             ),
             ..Default::default()
         }

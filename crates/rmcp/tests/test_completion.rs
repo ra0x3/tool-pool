@@ -102,7 +102,8 @@ fn test_completion_info_helper_methods() {
     assert_eq!(completion.total_available(), Some(2));
 
     // Test with_pagination
-    let paginated = CompletionInfo::with_pagination(values.clone(), Some(10), true).unwrap();
+    let paginated =
+        CompletionInfo::with_pagination(values.clone(), Some(10), true).unwrap();
     assert_eq!(paginated.values, values);
     assert_eq!(paginated.total, Some(10));
     assert_eq!(paginated.has_more, Some(true));

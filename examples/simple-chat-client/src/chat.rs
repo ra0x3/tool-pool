@@ -56,7 +56,8 @@ impl ChatSession {
 
                 for line in lines {
                     if line.starts_with("Tool:") {
-                        tool_name = line.strip_prefix("Tool:").map(|s| s.trim().to_string());
+                        tool_name =
+                            line.strip_prefix("Tool:").map(|s| s.trim().to_string());
                         parsing_args = false;
                     } else if line.starts_with("Inputs:") {
                         parsing_args = true;
@@ -78,8 +79,9 @@ impl ChatSession {
             let tool = self.tool_set.get_tool(&tool_call.name);
             if let Some(tool) = tool {
                 // call tool
-                let args = serde_json::from_str::<serde_json::Value>(&tool_call.arguments)
-                    .unwrap_or_default();
+                let args =
+                    serde_json::from_str::<serde_json::Value>(&tool_call.arguments)
+                        .unwrap_or_default();
                 match tool.call(args).await {
                     Ok(result) => {
                         if result.is_error.is_some_and(|b| b) {
@@ -88,12 +90,14 @@ impl ChatSession {
                         } else {
                             result.content.iter().for_each(|content| {
                                 if let Some(content_text) = content.as_text() {
-                                    let json_result = serde_json::from_str::<serde_json::Value>(
-                                        &content_text.text,
-                                    )
-                                    .unwrap_or_default();
+                                    let json_result =
+                                        serde_json::from_str::<serde_json::Value>(
+                                            &content_text.text,
+                                        )
+                                        .unwrap_or_default();
                                     let pretty_result =
-                                        serde_json::to_string_pretty(&json_result).unwrap();
+                                        serde_json::to_string_pretty(&json_result)
+                                            .unwrap();
                                     println!("call tool result: {}", pretty_result);
                                     self.messages.push(Message::user(format!(
                                         "call tool result: {}",

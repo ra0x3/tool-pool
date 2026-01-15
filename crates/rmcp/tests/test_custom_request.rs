@@ -1,9 +1,12 @@
+#![cfg(all(feature = "client", feature = "server"))]
+
 use std::sync::Arc;
 
 use rmcp::{
     ClientHandler, ServerHandler, ServiceExt,
     model::{
-        ClientRequest, ClientResult, CustomRequest, CustomResult, ServerRequest, ServerResult,
+        ClientRequest, ClientResult, CustomRequest, CustomResult, ServerRequest,
+        ServerResult,
     },
 };
 use serde_json::json;
@@ -68,7 +71,8 @@ async fn test_custom_client_request_reaches_server() -> anyhow::Result<()> {
         )))
         .await?;
 
-    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified()).await?;
+    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+        .await?;
 
     let (method, params) = payload.lock().await.take().expect("payload set");
     assert_eq!("requests/custom-test", method);
@@ -109,7 +113,10 @@ struct CustomRequestServerNotifier {
 }
 
 impl ServerHandler for CustomRequestServerNotifier {
-    async fn on_initialized(&self, context: rmcp::service::NotificationContext<rmcp::RoleServer>) {
+    async fn on_initialized(
+        &self,
+        context: rmcp::service::NotificationContext<rmcp::RoleServer>,
+    ) {
         let peer = context.peer.clone();
         let receive_signal = self.receive_signal.clone();
         let response = self.response.clone();
@@ -169,7 +176,8 @@ async fn test_custom_server_request_reaches_client() -> anyhow::Result<()> {
     .serve(client_transport)
     .await?;
 
-    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified()).await?;
+    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+        .await?;
     tokio::time::timeout(
         std::time::Duration::from_secs(5),
         response_signal.notified(),

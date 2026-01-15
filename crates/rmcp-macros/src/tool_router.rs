@@ -79,7 +79,8 @@ mod test {
             vis = "pub(crate)"
         };
         let attr_args = NestedMeta::parse_meta_list(attr)?;
-        let ToolRouterAttribute { router, vis } = ToolRouterAttribute::from_list(&attr_args)?;
+        let ToolRouterAttribute { router, vis } =
+            ToolRouterAttribute::from_list(&attr_args)?;
         println!("router: {}", router);
         if let Some(vis) = vis {
             println!("visibility: {}", vis.to_token_stream());

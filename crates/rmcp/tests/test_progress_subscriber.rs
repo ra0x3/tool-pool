@@ -1,8 +1,12 @@
+#![cfg(all(feature = "client", feature = "server"))]
+
 use futures::StreamExt;
 use rmcp::{
     ClientHandler, Peer, RoleServer, ServerHandler, ServiceExt,
     handler::{client::progress::ProgressDispatcher, server::tool::ToolRouter},
-    model::{CallToolRequestParam, ClientRequest, Meta, ProgressNotificationParam, Request},
+    model::{
+        CallToolRequestParam, ClientRequest, Meta, ProgressNotificationParam, Request,
+    },
     service::PeerRequestOptions,
     tool, tool_handler, tool_router,
 };
@@ -62,12 +66,12 @@ impl MyServer {
         meta: Meta,
         client: Peer<RoleServer>,
     ) -> Result<(), rmcp::ErrorData> {
-        let progress_token = meta
-            .get_progress_token()
-            .ok_or(rmcp::ErrorData::invalid_params(
-                "Progress token is required for this tool",
-                None,
-            ))?;
+        let progress_token =
+            meta.get_progress_token()
+                .ok_or(rmcp::ErrorData::invalid_params(
+                    "Progress token is required for this tool",
+                    None,
+                ))?;
         for step in 0..10 {
             let _ = client
                 .notify_progress(ProgressNotificationParam {

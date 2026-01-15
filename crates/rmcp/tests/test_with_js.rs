@@ -17,8 +17,36 @@ use common::calculator::Calculator;
 const STREAMABLE_HTTP_BIND_ADDRESS: &str = "127.0.0.1:8001";
 const STREAMABLE_HTTP_JS_BIND_ADDRESS: &str = "127.0.0.1:8002";
 
+/// Check if a command is available in the system PATH
+async fn command_exists(cmd: &str) -> bool {
+    tokio::process::Command::new(if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    })
+    .arg(cmd)
+    .output()
+    .await
+    .map(|output| output.status.success())
+    .unwrap_or(false)
+}
+
+async fn ensure_node_available() -> anyhow::Result<()> {
+    if !command_exists("node").await {
+        eprintln!("Warning: Node.js is not installed. Skipping JavaScript tests.");
+        eprintln!("To run these tests, install Node.js: https://nodejs.org");
+        return Err(anyhow::anyhow!("Node.js not available"));
+    }
+    if !command_exists("npm").await {
+        eprintln!("Warning: npm is not installed. Skipping JavaScript tests.");
+        return Err(anyhow::anyhow!("npm not available"));
+    }
+    Ok(())
+}
+
 #[tokio::test]
 async fn test_with_js_stdio_server() -> anyhow::Result<()> {
+    ensure_node_available().await?;
     let _ = tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -49,6 +77,7 @@ async fn test_with_js_stdio_server() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_with_js_streamable_http_client() -> anyhow::Result<()> {
+    ensure_node_available().await?;
     let _ = tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -76,7 +105,8 @@ async fn test_with_js_streamable_http_client() -> anyhow::Result<()> {
             },
         );
     let router = axum::Router::new().nest_service("/mcp", service);
-    let tcp_listener = tokio::net::TcpListener::bind(STREAMABLE_HTTP_BIND_ADDRESS).await?;
+    let tcp_listener =
+        tokio::net::TcpListener::bind(STREAMABLE_HTTP_BIND_ADDRESS).await?;
 
     let handle = tokio::spawn({
         let ct = ct.clone();
@@ -99,6 +129,7 @@ async fn test_with_js_streamable_http_client() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_with_js_streamable_http_server() -> anyhow::Result<()> {
+    ensure_node_available().await?;
     let _ = tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()

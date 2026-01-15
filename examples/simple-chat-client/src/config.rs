@@ -1,7 +1,9 @@
 use std::{collections::HashMap, path::Path, process::Stdio};
 
 use anyhow::Result;
-use rmcp::{RoleClient, ServiceExt, service::RunningService, transport::ConfigureCommandExt};
+use rmcp::{
+    service::RunningService, transport::ConfigureCommandExt, RoleClient, ServiceExt,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,8 +47,9 @@ impl McpServerTransportConfig {
     pub async fn start(&self) -> Result<RunningService<RoleClient, ()>> {
         let client = match self {
             McpServerTransportConfig::Streamable { url } => {
-                let transport =
-                    rmcp::transport::StreamableHttpClientTransport::from_uri(url.to_string());
+                let transport = rmcp::transport::StreamableHttpClientTransport::from_uri(
+                    url.to_string(),
+                );
                 ().serve(transport).await?
             }
             McpServerTransportConfig::Stdio {

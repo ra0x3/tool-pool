@@ -17,7 +17,8 @@ pub struct OpenAIClient {
 
 impl OpenAIClient {
     pub fn new(api_key: String, url: Option<String>, proxy: Option<bool>) -> Self {
-        let base_url = url.unwrap_or("https://api.openai.com/v1/chat/completions".to_string());
+        let base_url =
+            url.unwrap_or("https://api.openai.com/v1/chat/completions".to_string());
         let proxy = proxy.unwrap_or(false);
         let client = if proxy {
             HttpClient::new()

@@ -261,13 +261,15 @@ async fn run_single_test(transport_type: &TransportType, args: &Args) -> Result<
             test_stdio_transport(args.records).await?;
             Ok(true)
         }
-        TransportType::Http => match test_http_transport(&args.http_url, args.records).await {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                tracing::error!("HTTP test failed: {}", e);
-                Ok(false)
+        TransportType::Http => {
+            match test_http_transport(&args.http_url, args.records).await {
+                Ok(_) => Ok(true),
+                Err(e) => {
+                    tracing::error!("HTTP test failed: {}", e);
+                    Ok(false)
+                }
             }
-        },
+        }
         TransportType::All => {
             // This case is handled in main
             Ok(true)
@@ -282,7 +284,8 @@ async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "info".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();

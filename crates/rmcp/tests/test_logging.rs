@@ -1,4 +1,6 @@
 // cargo test --features "server client" --package rmcp test_logging
+#![cfg(all(feature = "server", feature = "client"))]
+
 mod common;
 
 use std::sync::{Arc, Mutex};
@@ -15,7 +17,8 @@ use tokio::sync::Notify;
 async fn test_logging_spec_compliance() -> anyhow::Result<()> {
     let (server_transport, client_transport) = tokio::io::duplex(4096);
     let receive_signal = Arc::new(Notify::new());
-    let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
+    let received_messages =
+        Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
     // Start server in a separate task
     let server_handle = tokio::spawn(async move {
@@ -101,7 +104,8 @@ async fn test_logging_spec_compliance() -> anyhow::Result<()> {
 async fn test_logging_user_scenarios() -> anyhow::Result<()> {
     let (server_transport, client_transport) = tokio::io::duplex(4096);
     let receive_signal = Arc::new(Notify::new());
-    let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
+    let received_messages =
+        Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
     let server_handle = tokio::spawn(async move {
         let server = TestServer::new().serve(server_transport).await?;
@@ -231,7 +235,8 @@ fn test_logging_level_serialization() {
 async fn test_logging_edge_cases() -> anyhow::Result<()> {
     let (server_transport, client_transport) = tokio::io::duplex(4096);
     let receive_signal = Arc::new(Notify::new());
-    let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
+    let received_messages =
+        Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
     let server_handle = tokio::spawn(async move {
         let server = TestServer::new().serve(server_transport).await?;
@@ -274,13 +279,16 @@ async fn test_logging_edge_cases() -> anyhow::Result<()> {
 async fn test_logging_optional_fields() -> anyhow::Result<()> {
     let (server_transport, client_transport) = tokio::io::duplex(4096);
     let receive_signal = Arc::new(Notify::new());
-    let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
+    let received_messages =
+        Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
     let server_handle = tokio::spawn(async move {
         let server = TestServer::new().serve(server_transport).await?;
 
         // Test message with and without optional logger field
-        for (level, has_logger) in [(LoggingLevel::Info, true), (LoggingLevel::Debug, false)] {
+        for (level, has_logger) in
+            [(LoggingLevel::Info, true), (LoggingLevel::Debug, false)]
+        {
             server
                 .peer()
                 .notify_logging_message(LoggingMessageNotificationParam {

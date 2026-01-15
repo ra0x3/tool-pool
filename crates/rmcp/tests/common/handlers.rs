@@ -3,14 +3,17 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[cfg(feature = "client")]
+use rmcp::{ClientHandler, RoleClient};
 use rmcp::{
-    ClientHandler, ErrorData as McpError, RoleClient, RoleServer, ServerHandler,
+    ErrorData as McpError, RoleServer, ServerHandler,
     model::*,
     service::{NotificationContext, RequestContext},
 };
 use serde_json::json;
 use tokio::sync::Notify;
 
+#[cfg(feature = "client")]
 #[derive(Clone)]
 pub struct TestClientHandler {
     pub honor_this_server: bool,
@@ -19,6 +22,7 @@ pub struct TestClientHandler {
     pub received_messages: Arc<Mutex<Vec<LoggingMessageNotificationParam>>>,
 }
 
+#[cfg(feature = "client")]
 impl TestClientHandler {
     #[allow(dead_code)]
     pub fn new(honor_this_server: bool, honor_all_servers: bool) -> Self {
@@ -46,6 +50,7 @@ impl TestClientHandler {
     }
 }
 
+#[cfg(feature = "client")]
 impl ClientHandler for TestClientHandler {
     async fn create_message(
         &self,

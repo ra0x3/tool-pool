@@ -715,7 +715,10 @@ impl<T> EnumSchemaBuilder<T> {
     }
 
     /// Set titles to enum values. Also, implicitly set this enum schema as titled
-    pub fn enum_titles(mut self, titles: Vec<String>) -> Result<EnumSchemaBuilder<T>, String> {
+    pub fn enum_titles(
+        mut self,
+        titles: Vec<String>,
+    ) -> Result<EnumSchemaBuilder<T>, String> {
         if titles.len() != self.enum_values.len() {
             return Err(format!(
                 "Provided number of titles do not match number of values: expected {}, but got {}",
@@ -825,18 +828,21 @@ impl EnumSchemaBuilder<MultiSelect> {
     ) -> Result<EnumSchemaBuilder<MultiSelect>, String> {
         for value in &default_values {
             if !self.enum_values.contains(value) {
-                return Err("One of the provided default values is not in enum values".to_string());
+                return Err("One of the provided default values is not in enum values"
+                    .to_string());
             }
         }
         if let Some(min) = self.min_items {
             if (default_values.len() as u64) < min {
-                return Err("Number of provided default values is less than min_items".to_string());
+                return Err("Number of provided default values is less than min_items"
+                    .to_string());
             }
         }
         if let Some(max) = self.max_items {
             if (default_values.len() as u64) > max {
                 return Err(
-                    "Number of provided default values is greater than max_items".to_string(),
+                    "Number of provided default values is greater than max_items"
+                        .to_string(),
                 );
             }
         }
@@ -845,7 +851,10 @@ impl EnumSchemaBuilder<MultiSelect> {
     }
 
     /// Set minimal number of items for multi-select enum options
-    pub fn min_items(mut self, value: u64) -> Result<EnumSchemaBuilder<MultiSelect>, String> {
+    pub fn min_items(
+        mut self,
+        value: u64,
+    ) -> Result<EnumSchemaBuilder<MultiSelect>, String> {
         if let Some(max) = self.max_items
             && value > max
         {
@@ -856,7 +865,10 @@ impl EnumSchemaBuilder<MultiSelect> {
     }
 
     /// Set maximal number of items for multi-select enum options
-    pub fn max_items(mut self, value: u64) -> Result<EnumSchemaBuilder<MultiSelect>, String> {
+    pub fn max_items(
+        mut self,
+        value: u64,
+    ) -> Result<EnumSchemaBuilder<MultiSelect>, String> {
         if let Some(min) = self.min_items
             && value < min
         {
@@ -887,26 +899,28 @@ impl EnumSchemaBuilder<MultiSelect> {
                     },
                 },
             )),
-            true => EnumSchema::Multi(MultiSelectEnumSchema::Titled(TitledMultiSelectEnumSchema {
-                type_: ArrayTypeConst,
-                title: self.title,
-                description: self.description,
-                min_items: self.min_items,
-                max_items: self.max_items,
-                items: TitledItems {
-                    any_of: self
-                        .enum_titles
-                        .into_iter()
-                        .zip(self.enum_values)
-                        .map(|(title, const_)| ConstTitle { const_, title })
-                        .collect(),
+            true => EnumSchema::Multi(MultiSelectEnumSchema::Titled(
+                TitledMultiSelectEnumSchema {
+                    type_: ArrayTypeConst,
+                    title: self.title,
+                    description: self.description,
+                    min_items: self.min_items,
+                    max_items: self.max_items,
+                    items: TitledItems {
+                        any_of: self
+                            .enum_titles
+                            .into_iter()
+                            .zip(self.enum_values)
+                            .map(|(title, const_)| ConstTitle { const_, title })
+                            .collect(),
+                    },
+                    default: if self.default.is_empty() {
+                        None
+                    } else {
+                        Some(self.default)
+                    },
                 },
-                default: if self.default.is_empty() {
-                    None
-                } else {
-                    Some(self.default)
-                },
-            })),
+            )),
         }
     }
 }
@@ -1013,7 +1027,9 @@ impl ElicitationSchema {
     ///
     /// Returns a [`serde_json::Error`] if the JSON object cannot be deserialized
     /// into a valid ElicitationSchema.
-    pub fn from_json_schema(schema: crate::model::JsonObject) -> Result<Self, serde_json::Error> {
+    pub fn from_json_schema(
+        schema: crate::model::JsonObject,
+    ) -> Result<Self, serde_json::Error> {
         serde_json::from_value(serde_json::Value::Object(schema))
     }
 
@@ -1126,7 +1142,11 @@ impl ElicitationSchemaBuilder {
     }
 
     /// Add a required property to the schema
-    pub fn required_property(mut self, name: impl Into<String>, schema: PrimitiveSchema) -> Self {
+    pub fn required_property(
+        mut self,
+        name: impl Into<String>,
+        schema: PrimitiveSchema,
+    ) -> Self {
         let name_str = name.into();
         self.required.push(name_str.clone());
         self.properties.insert(name_str, schema);
@@ -1387,12 +1407,20 @@ impl ElicitationSchemaBuilder {
     // Enum convenience methods
 
     /// Add a required enum property using EnumSchema
-    pub fn required_enum_schema(self, name: impl Into<String>, enum_schema: EnumSchema) -> Self {
+    pub fn required_enum_schema(
+        self,
+        name: impl Into<String>,
+        enum_schema: EnumSchema,
+    ) -> Self {
         self.required_property(name, PrimitiveSchema::Enum(enum_schema))
     }
 
     /// Add an optional enum property using EnumSchema
-    pub fn optional_enum_schema(self, name: impl Into<String>, enum_schema: EnumSchema) -> Self {
+    pub fn optional_enum_schema(
+        self,
+        name: impl Into<String>,
+        enum_schema: EnumSchema,
+    ) -> Self {
         self.property(name, PrimitiveSchema::Enum(enum_schema))
     }
 
@@ -1710,12 +1738,13 @@ mod tests {
     #[test]
     fn test_enum_schema_multi_to_single_transition() -> anyhow::Result<()> {
         // Start with multi-select with defaults
-        let builder = EnumSchema::builder(vec!["A".to_string(), "B".to_string(), "C".to_string()])
-            .multiselect()
-            .with_default(vec!["A".to_string(), "B".to_string()])
-            .map_err(|e| anyhow!("{e}"))?
-            .min_items(1)
-            .map_err(|e| anyhow!("{e}"))?;
+        let builder =
+            EnumSchema::builder(vec!["A".to_string(), "B".to_string(), "C".to_string()])
+                .multiselect()
+                .with_default(vec!["A".to_string(), "B".to_string()])
+                .map_err(|e| anyhow!("{e}"))?
+                .min_items(1)
+                .map_err(|e| anyhow!("{e}"))?;
 
         // Transition back to single-select should clear defaults and min/max items
         let schema = builder.single_select().build();
@@ -1730,7 +1759,8 @@ mod tests {
 
     #[test]
     fn test_enum_schema_invalid_single_default() {
-        let result = EnumSchema::builder(vec!["A".to_string(), "B".to_string()]).with_default("C");
+        let result =
+            EnumSchema::builder(vec!["A".to_string(), "B".to_string()]).with_default("C");
 
         assert!(result.is_err());
         assert_eq!(
@@ -1827,8 +1857,12 @@ mod tests {
 
     #[test]
     fn test_elicitation_schema_builder_complex() {
-        let enum_schema =
-            EnumSchema::builder(vec!["US".to_string(), "UK".to_string(), "CA".to_string()]).build();
+        let enum_schema = EnumSchema::builder(vec![
+            "US".to_string(),
+            "UK".to_string(),
+            "CA".to_string(),
+        ])
+        .build();
         let schema = ElicitationSchema::builder()
             .required_string_with("name", |s| s.length(1, 100))
             .required_integer("age", 0, 150)
@@ -1949,7 +1983,9 @@ mod tests {
             );
             let properties = match json.get("properties") {
                 Some(serde_json::Value::Object(map)) => map,
-                _ => panic!("Schema does not have 'properties' field or it is not object type"),
+                _ => panic!(
+                    "Schema does not have 'properties' field or it is not object type"
+                ),
             };
 
             assert_eq!(properties.len(), 5);

@@ -17,7 +17,8 @@ pub struct OutputData {
 
 #[test]
 fn test_with_output_schema() {
-    let tool = Tool::new("test", "Test tool", JsonObject::new()).with_output_schema::<OutputData>();
+    let tool = Tool::new("test", "Test tool", JsonObject::new())
+        .with_output_schema::<OutputData>();
 
     assert!(tool.output_schema.is_some());
 
@@ -29,7 +30,8 @@ fn test_with_output_schema() {
 
 #[test]
 fn test_with_input_schema() {
-    let tool = Tool::new("test", "Test tool", JsonObject::new()).with_input_schema::<InputData>();
+    let tool = Tool::new("test", "Test tool", JsonObject::new())
+        .with_input_schema::<InputData>();
 
     // Verify the schema contains expected fields
     let schema_str = serde_json::to_string(&tool.input_schema).unwrap();
@@ -56,7 +58,8 @@ fn test_chained_builder_methods() {
     assert!(input_schema_str.contains("name"));
     assert!(input_schema_str.contains("age"));
 
-    let output_schema_str = serde_json::to_string(tool.output_schema.as_ref().unwrap()).unwrap();
+    let output_schema_str =
+        serde_json::to_string(tool.output_schema.as_ref().unwrap()).unwrap();
     assert!(output_schema_str.contains("greeting"));
     assert!(output_schema_str.contains("is_adult"));
 }

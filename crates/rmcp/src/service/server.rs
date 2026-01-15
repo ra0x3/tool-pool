@@ -9,14 +9,14 @@ use crate::model::{
 };
 use crate::{
     model::{
-        CancelledNotification, CancelledNotificationParam, ClientInfo, ClientJsonRpcMessage,
-        ClientNotification, ClientRequest, ClientResult, CreateMessageRequest,
-        CreateMessageRequestParam, CreateMessageResult, ErrorData, ListRootsRequest,
-        ListRootsResult, LoggingMessageNotification, LoggingMessageNotificationParam,
-        ProgressNotification, ProgressNotificationParam, PromptListChangedNotification,
-        ProtocolVersion, ResourceListChangedNotification, ResourceUpdatedNotification,
-        ResourceUpdatedNotificationParam, ServerInfo, ServerNotification, ServerRequest,
-        ServerResult, ToolListChangedNotification,
+        CancelledNotification, CancelledNotificationParam, ClientInfo,
+        ClientJsonRpcMessage, ClientNotification, ClientRequest, ClientResult,
+        CreateMessageRequest, CreateMessageRequestParam, CreateMessageResult, ErrorData,
+        ListRootsRequest, ListRootsResult, LoggingMessageNotification,
+        LoggingMessageNotificationParam, ProgressNotification, ProgressNotificationParam,
+        PromptListChangedNotification, ProtocolVersion, ResourceListChangedNotification,
+        ResourceUpdatedNotification, ResourceUpdatedNotificationParam, ServerInfo,
+        ServerNotification, ServerRequest, ServerResult, ToolListChangedNotification,
     },
     transport::DynamicTransportError,
 };
@@ -89,7 +89,9 @@ impl<S: Service<RoleServer>> ServiceExt<RoleServer> for S {
         self,
         transport: T,
         ct: CancellationToken,
-    ) -> impl Future<Output = Result<RunningService<RoleServer, Self>, ServerInitializeError>> + Send
+    ) -> impl Future<
+        Output = Result<RunningService<RoleServer, Self>, ServerInitializeError>,
+    > + Send
     where
         T: IntoTransport<RoleServer, E, A>,
         E: std::error::Error + Send + Sync + 'static,
@@ -241,7 +243,8 @@ where
         })?;
 
     // Wait for initialize notification
-    let notification = expect_notification(&mut transport, "initialize notification").await?;
+    let notification =
+        expect_notification(&mut transport, "initialize notification").await?;
     let ClientNotification::InitializedNotification(_) = notification else {
         return Err(ServerInitializeError::ExpectedInitializedNotification(
             Some(ClientJsonRpcMessage::notification(notification)),
@@ -452,7 +455,9 @@ pub enum ElicitationError {
     NoContent,
 
     /// Client does not support elicitation capability
-    #[error("Client does not support elicitation - capability not declared during initialization")]
+    #[error(
+        "Client does not support elicitation - capability not declared during initialization"
+    )]
     CapabilityNotSupported,
 }
 
@@ -602,7 +607,10 @@ impl Peer<RoleServer> {
     /// # }
     /// ```
     #[cfg(all(feature = "schemars", feature = "elicitation"))]
-    pub async fn elicit<T>(&self, message: impl Into<String>) -> Result<Option<T>, ElicitationError>
+    pub async fn elicit<T>(
+        &self,
+        message: impl Into<String>,
+    ) -> Result<Option<T>, ElicitationError>
     where
         T: ElicitationSafe + for<'de> serde::Deserialize<'de>,
     {
@@ -678,14 +686,16 @@ impl Peer<RoleServer> {
 
         // Generate schema automatically from type
         let schema = crate::model::ElicitationSchema::from_type::<T>().map_err(|e| {
-            ElicitationError::Service(ServiceError::McpError(crate::ErrorData::invalid_params(
-                format!(
-                    "Invalid schema for type {}: {}",
-                    std::any::type_name::<T>(),
-                    e
+            ElicitationError::Service(ServiceError::McpError(
+                crate::ErrorData::invalid_params(
+                    format!(
+                        "Invalid schema for type {}: {}",
+                        std::any::type_name::<T>(),
+                        e
+                    ),
+                    None,
                 ),
-                None,
-            )))
+            ))
         })?;
 
         let response = self
@@ -703,14 +713,20 @@ impl Peer<RoleServer> {
                 if let Some(value) = response.content {
                     match serde_json::from_value::<T>(value.clone()) {
                         Ok(parsed) => Ok(Some(parsed)),
-                        Err(error) => Err(ElicitationError::ParseError { error, data: value }),
+                        Err(error) => {
+                            Err(ElicitationError::ParseError { error, data: value })
+                        }
                     }
                 } else {
                     Err(ElicitationError::NoContent)
                 }
             }
-            crate::model::ElicitationAction::Decline => Err(ElicitationError::UserDeclined),
-            crate::model::ElicitationAction::Cancel => Err(ElicitationError::UserCancelled),
+            crate::model::ElicitationAction::Decline => {
+                Err(ElicitationError::UserDeclined)
+            }
+            crate::model::ElicitationAction::Cancel => {
+                Err(ElicitationError::UserCancelled)
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 //cargo test --test test_message_protocol --features "client server"
+#![cfg(all(feature = "client", feature = "server"))]
 
 mod common;
 use common::handlers::{TestClientHandler, TestServer};

@@ -24,7 +24,8 @@ impl Default for ToolHandlerAttribute {
 
 pub fn tool_handler(attr: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
     let attr_args = NestedMeta::parse_meta_list(attr)?;
-    let ToolHandlerAttribute { router, meta } = ToolHandlerAttribute::from_list(&attr_args)?;
+    let ToolHandlerAttribute { router, meta } =
+        ToolHandlerAttribute::from_list(&attr_args)?;
     let mut item_impl = syn::parse2::<ItemImpl>(input.clone())?;
     let tool_call_fn = quote! {
         async fn call_tool(

@@ -171,7 +171,9 @@ impl Tool {
     /// Panics if the generated schema does not have root type "object" as required by MCP specification.
     pub fn with_output_schema<T: JsonSchema + 'static>(mut self) -> Self {
         let schema = crate::handler::server::tool::schema_for_output::<T>()
-            .unwrap_or_else(|e| panic!("Invalid output schema for tool '{}': {}", self.name, e));
+            .unwrap_or_else(|e| {
+                panic!("Invalid output schema for tool '{}': {}", self.name, e)
+            });
         self.output_schema = Some(schema);
         self
     }

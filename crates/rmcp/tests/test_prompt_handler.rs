@@ -6,7 +6,9 @@
 use rmcp::{
     RoleServer, ServerHandler,
     handler::server::router::prompt::PromptRouter,
-    model::{GetPromptRequestParam, GetPromptResult, ListPromptsResult, PaginatedRequestParam},
+    model::{
+        GetPromptRequestParam, GetPromptResult, ListPromptsResult, PaginatedRequestParam,
+    },
     prompt_handler,
     service::RequestContext,
 };

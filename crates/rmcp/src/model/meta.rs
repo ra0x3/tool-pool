@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::{
-    ClientNotification, ClientRequest, CustomNotification, CustomRequest, Extensions, JsonObject,
-    JsonRpcMessage, NumberOrString, ProgressToken, ServerNotification, ServerRequest,
+    ClientNotification, ClientRequest, CustomNotification, CustomRequest, Extensions,
+    JsonObject, JsonRpcMessage, NumberOrString, ProgressToken, ServerNotification,
+    ServerRequest,
 };
 
 pub trait GetMeta {
@@ -163,7 +164,9 @@ impl Meta {
 
     pub fn get_progress_token(&self) -> Option<ProgressToken> {
         self.0.get(PROGRESS_TOKEN_FIELD).and_then(|v| match v {
-            Value::String(s) => Some(ProgressToken(NumberOrString::String(s.to_string().into()))),
+            Value::String(s) => {
+                Some(ProgressToken(NumberOrString::String(s.to_string().into())))
+            }
             Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     Some(ProgressToken(NumberOrString::Number(i)))

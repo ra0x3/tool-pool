@@ -486,22 +486,37 @@ impl ErrorData {
             data,
         }
     }
-    pub fn resource_not_found(message: impl Into<Cow<'static, str>>, data: Option<Value>) -> Self {
+    pub fn resource_not_found(
+        message: impl Into<Cow<'static, str>>,
+        data: Option<Value>,
+    ) -> Self {
         Self::new(ErrorCode::RESOURCE_NOT_FOUND, message, data)
     }
-    pub fn parse_error(message: impl Into<Cow<'static, str>>, data: Option<Value>) -> Self {
+    pub fn parse_error(
+        message: impl Into<Cow<'static, str>>,
+        data: Option<Value>,
+    ) -> Self {
         Self::new(ErrorCode::PARSE_ERROR, message, data)
     }
-    pub fn invalid_request(message: impl Into<Cow<'static, str>>, data: Option<Value>) -> Self {
+    pub fn invalid_request(
+        message: impl Into<Cow<'static, str>>,
+        data: Option<Value>,
+    ) -> Self {
         Self::new(ErrorCode::INVALID_REQUEST, message, data)
     }
     pub fn method_not_found<M: ConstString>() -> Self {
         Self::new(ErrorCode::METHOD_NOT_FOUND, M::VALUE, None)
     }
-    pub fn invalid_params(message: impl Into<Cow<'static, str>>, data: Option<Value>) -> Self {
+    pub fn invalid_params(
+        message: impl Into<Cow<'static, str>>,
+        data: Option<Value>,
+    ) -> Self {
         Self::new(ErrorCode::INVALID_PARAMS, message, data)
     }
-    pub fn internal_error(message: impl Into<Cow<'static, str>>, data: Option<Value>) -> Self {
+    pub fn internal_error(
+        message: impl Into<Cow<'static, str>>,
+        data: Option<Value>,
+    ) -> Self {
         Self::new(ErrorCode::INTERNAL_ERROR, message, data)
     }
 }
@@ -870,7 +885,8 @@ pub struct ProgressNotificationParam {
     pub message: Option<String>,
 }
 
-pub type ProgressNotification = Notification<ProgressNotificationMethod, ProgressNotificationParam>;
+pub type ProgressNotification =
+    Notification<ProgressNotificationMethod, ProgressNotificationParam>;
 
 pub type Cursor = String;
 
@@ -944,9 +960,12 @@ pub struct ReadResourceResult {
 }
 
 /// Request to read a specific resource
-pub type ReadResourceRequest = Request<ReadResourceRequestMethod, ReadResourceRequestParam>;
+pub type ReadResourceRequest =
+    Request<ReadResourceRequestMethod, ReadResourceRequestParam>;
 
-const_string!(ResourceListChangedNotificationMethod = "notifications/resources/list_changed");
+const_string!(
+    ResourceListChangedNotificationMethod = "notifications/resources/list_changed"
+);
 /// Notification sent when the list of available resources changes
 pub type ResourceListChangedNotification =
     NotificationNoParam<ResourceListChangedNotificationMethod>;
@@ -994,7 +1013,8 @@ pub type ResourceUpdatedNotification =
 
 const_string!(ListPromptsRequestMethod = "prompts/list");
 /// Request to list all available prompts from a server
-pub type ListPromptsRequest = RequestOptionalParam<ListPromptsRequestMethod, PaginatedRequestParam>;
+pub type ListPromptsRequest =
+    RequestOptionalParam<ListPromptsRequestMethod, PaginatedRequestParam>;
 
 paginated_result!(ListPromptsResult {
     prompts: Vec<Prompt>
@@ -1015,11 +1035,13 @@ pub type GetPromptRequest = Request<GetPromptRequestMethod, GetPromptRequestPara
 
 const_string!(PromptListChangedNotificationMethod = "notifications/prompts/list_changed");
 /// Notification sent when the list of available prompts changes
-pub type PromptListChangedNotification = NotificationNoParam<PromptListChangedNotificationMethod>;
+pub type PromptListChangedNotification =
+    NotificationNoParam<PromptListChangedNotificationMethod>;
 
 const_string!(ToolListChangedNotificationMethod = "notifications/tools/list_changed");
 /// Notification sent when the list of available tools changes
-pub type ToolListChangedNotification = NotificationNoParam<ToolListChangedNotificationMethod>;
+pub type ToolListChangedNotification =
+    NotificationNoParam<ToolListChangedNotificationMethod>;
 
 // =============================================================================
 // LOGGING
@@ -1075,7 +1097,8 @@ pub type LoggingMessageNotification =
 // =============================================================================
 
 const_string!(CreateMessageRequestMethod = "sampling/createMessage");
-pub type CreateMessageRequest = Request<CreateMessageRequestMethod, CreateMessageRequestParam>;
+pub type CreateMessageRequest =
+    Request<CreateMessageRequestMethod, CreateMessageRequestParam>;
 
 /// Represents the role of a participant in a conversation or message exchange.
 ///
@@ -1437,7 +1460,8 @@ pub struct ListRootsResult {
 }
 
 const_string!(RootsListChangedNotificationMethod = "notifications/roots/list_changed");
-pub type RootsListChangedNotification = NotificationNoParam<RootsListChangedNotificationMethod>;
+pub type RootsListChangedNotification =
+    NotificationNoParam<RootsListChangedNotificationMethod>;
 
 // =============================================================================
 // ELICITATION (INTERACTIVE USER INPUT)
@@ -1446,7 +1470,9 @@ pub type RootsListChangedNotification = NotificationNoParam<RootsListChangedNoti
 // Method constants for elicitation operations.
 // Elicitation allows servers to request interactive input from users during tool execution.
 const_string!(ElicitationCreateRequestMethod = "elicitation/create");
-const_string!(ElicitationResponseNotificationMethod = "notifications/elicitation/response");
+const_string!(
+    ElicitationResponseNotificationMethod = "notifications/elicitation/response"
+);
 
 /// Represents the possible actions a user can take in response to an elicitation request.
 ///
@@ -1685,7 +1711,8 @@ impl<'de> Deserialize<'de> for CallToolResult {
 
 const_string!(ListToolsRequestMethod = "tools/list");
 /// Request to list all available tools from a server
-pub type ListToolsRequest = RequestOptionalParam<ListToolsRequestMethod, PaginatedRequestParam>;
+pub type ListToolsRequest =
+    RequestOptionalParam<ListToolsRequestMethod, PaginatedRequestParam>;
 
 paginated_result!(
     ListToolsResult {
@@ -1925,7 +1952,8 @@ impl ClientResult {
     }
 }
 
-pub type ClientJsonRpcMessage = JsonRpcMessage<ClientRequest, ClientResult, ClientNotification>;
+pub type ClientJsonRpcMessage =
+    JsonRpcMessage<ClientRequest, ClientResult, ClientNotification>;
 
 ts_union!(
     export type ServerRequest =
@@ -1975,7 +2003,8 @@ impl ServerResult {
     }
 }
 
-pub type ServerJsonRpcMessage = JsonRpcMessage<ServerRequest, ServerResult, ServerNotification>;
+pub type ServerJsonRpcMessage =
+    JsonRpcMessage<ServerRequest, ServerResult, ServerNotification>;
 
 impl TryInto<CancelledNotification> for ServerNotification {
     type Error = ServerNotification;
@@ -2112,8 +2141,8 @@ mod tests {
                             "method": "requests/custom",
                             "params": {"foo": "bar"},
                         });
-                        let actual_request =
-                            serde_json::to_value(custom).expect("serialize custom request");
+                        let actual_request = serde_json::to_value(custom)
+                            .expect("serialize custom request");
                         assert_eq!(actual_request, expected_request);
                     }
                     other => panic!("Expected custom request, got: {other:?}"),
@@ -2134,7 +2163,8 @@ mod tests {
             "method": "request",
             "params": {"key": "value"},
         });
-        let message: JsonRpcMessage = serde_json::from_value(raw.clone()).expect("invalid request");
+        let message: JsonRpcMessage =
+            serde_json::from_value(raw.clone()).expect("invalid request");
 
         match &message {
             JsonRpcMessage::Request(r) => {
@@ -2249,7 +2279,8 @@ mod tests {
             other => panic!("Expected InitializeResult, got {other:?}"),
         }
 
-        let server_response_json: Value = serde_json::to_value(&server_response).expect("msg");
+        let server_response_json: Value =
+            serde_json::to_value(&server_response).expect("msg");
 
         assert_eq!(server_response_json, raw_response_json);
     }
@@ -2264,8 +2295,8 @@ mod tests {
             "params": {}
         });
 
-        let message: JsonRpcMessage =
-            serde_json::from_value(negative_id_json.clone()).expect("Should parse negative ID");
+        let message: JsonRpcMessage = serde_json::from_value(negative_id_json.clone())
+            .expect("Should parse negative ID");
 
         match &message {
             JsonRpcMessage::Request(r) => {

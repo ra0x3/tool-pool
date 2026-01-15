@@ -3,8 +3,8 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use async_trait::async_trait;
 use oauth2::{
     AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, EmptyExtraTokenFields,
-    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, RequestTokenError, Scope,
-    StandardTokenResponse, TokenResponse, TokenUrl,
+    PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken, RequestTokenError,
+    Scope, StandardTokenResponse, TokenResponse, TokenUrl,
     basic::{BasicClient, BasicTokenType},
 };
 use reqwest::{
@@ -115,7 +115,10 @@ pub trait StateStore: Send + Sync {
         state: StoredAuthorizationState,
     ) -> Result<(), AuthError>;
 
-    async fn load(&self, csrf_token: &str) -> Result<Option<StoredAuthorizationState>, AuthError>;
+    async fn load(
+        &self,
+        csrf_token: &str,
+    ) -> Result<Option<StoredAuthorizationState>, AuthError>;
 
     async fn delete(&self, csrf_token: &str) -> Result<(), AuthError>;
 }
@@ -151,7 +154,10 @@ impl StateStore for InMemoryStateStore {
         Ok(())
     }
 
-    async fn load(&self, csrf_token: &str) -> Result<Option<StoredAuthorizationState>, AuthError> {
+    async fn load(
+        &self,
+        csrf_token: &str,
+    ) -> Result<Option<StoredAuthorizationState>, AuthError> {
         Ok(self.states.read().await.get(csrf_token).cloned())
     }
 
@@ -188,7 +194,9 @@ impl<C> AuthClient<C> {
 }
 
 impl<C> AuthClient<C> {
-    pub fn get_access_token(&self) -> impl Future<Output = Result<String, AuthError>> + Send {
+    pub fn get_access_token(
+        &self,
+    ) -> impl Future<Output = Result<String, AuthError>> + Send {
         let auth_manager = self.auth_manager.clone();
         async move { auth_manager.lock().await.get_access_token().await }
     }
@@ -271,12 +279,15 @@ pub struct OAuthClientConfig {
 }
 
 // add type aliases for oauth2 types
-type OAuthErrorResponse = oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>;
-pub type OAuthTokenResponse = StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>;
+type OAuthErrorResponse =
+    oauth2::StandardErrorResponse<oauth2::basic::BasicErrorResponseType>;
+pub type OAuthTokenResponse =
+    StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>;
 type OAuthTokenIntrospection =
     oauth2::StandardTokenIntrospectionResponse<EmptyExtraTokenFields, BasicTokenType>;
 type OAuthRevocableToken = oauth2::StandardRevocableToken;
-type OAuthRevocationError = oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>;
+type OAuthRevocationError =
+    oauth2::StandardErrorResponse<oauth2::RevocationErrorResponseType>;
 type OAuthClient = oauth2::Client<
     OAuthErrorResponse,
     OAuthTokenResponse,
@@ -326,7 +337,9 @@ pub struct ClientRegistrationResponse {
 fn is_https_url(value: &str) -> bool {
     Url::parse(value)
         .ok()
-        .map(|url| url.scheme() == "https" && url.path() != "/" && url.host_str().is_some())
+        .map(|url| {
+            url.scheme() == "https" && url.path() != "/" && url.host_str().is_some()
+        })
         .unwrap_or(false)
 }
 
@@ -432,7 +445,8 @@ impl AuthorizationManager {
             return Ok(metadata);
         }
 
-        if let Some(metadata) = self.discover_oauth_server_via_resource_metadata().await? {
+        if let Some(metadata) = self.discover_oauth_server_via_resource_metadata().await?
+        {
             return Ok(metadata);
         }
 
@@ -446,7 +460,9 @@ impl AuthorizationManager {
         let client_id = self
             .oauth_client
             .as_ref()
-            .ok_or_else(|| AuthError::InternalError("OAuth client not configured".to_string()))?
+            .ok_or_else(|| {
+                AuthError::InternalError("OAuth client not configured".to_string())
+            })?
             .client_id();
 
         let stored = self.credential_store.load().await?;
@@ -456,15 +472,20 @@ impl AuthorizationManager {
     }
 
     /// configure oauth2 client with client credentials
-    pub fn configure_client(&mut self, config: OAuthClientConfig) -> Result<(), AuthError> {
+    pub fn configure_client(
+        &mut self,
+        config: OAuthClientConfig,
+    ) -> Result<(), AuthError> {
         if self.metadata.is_none() {
             return Err(AuthError::NoAuthorizationSupport);
         }
 
         let metadata = self.metadata.as_ref().unwrap();
 
-        let auth_url = AuthUrl::new(metadata.authorization_endpoint.clone())
-            .map_err(|e| AuthError::OAuthError(format!("Invalid authorization URL: {}", e)))?;
+        let auth_url =
+            AuthUrl::new(metadata.authorization_endpoint.clone()).map_err(|e| {
+                AuthError::OAuthError(format!("Invalid authorization URL: {}", e))
+            })?;
 
         let token_url = TokenUrl::new(metadata.token_endpoint.clone())
             .map_err(|e| AuthError::OAuthError(format!("Invalid token URL: {}", e)))?;
@@ -488,7 +509,9 @@ impl AuthorizationManager {
     /// validate if the server support the response type
     fn validate_response_supported(&self, response_type: &str) -> Result<(), AuthError> {
         if let Some(metadata) = self.metadata.as_ref() {
-            if let Some(response_types_supported) = metadata.response_types_supported.as_ref() {
+            if let Some(response_types_supported) =
+                metadata.response_types_supported.as_ref()
+            {
                 if !response_types_supported.contains(&response_type.to_string()) {
                     return Err(AuthError::InvalidScope(response_type.to_string()));
                 }
@@ -599,11 +622,13 @@ impl AuthorizationManager {
     }
 
     /// generate authorization url
-    pub async fn get_authorization_url(&self, scopes: &[&str]) -> Result<String, AuthError> {
-        let oauth_client = self
-            .oauth_client
-            .as_ref()
-            .ok_or_else(|| AuthError::InternalError("OAuth client not configured".to_string()))?;
+    pub async fn get_authorization_url(
+        &self,
+        scopes: &[&str],
+    ) -> Result<String, AuthError> {
+        let oauth_client = self.oauth_client.as_ref().ok_or_else(|| {
+            AuthError::InternalError("OAuth client not configured".to_string())
+        })?;
 
         // ensure the server supports the response type we intend to use when metadata is available
         self.validate_response_supported("code")?;
@@ -637,18 +662,17 @@ impl AuthorizationManager {
         &self,
         code: &str,
         csrf_token: &str,
-    ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>, AuthError> {
+    ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>, AuthError>
+    {
         debug!("start exchange code for token: {:?}", code);
-        let oauth_client = self
-            .oauth_client
-            .as_ref()
-            .ok_or_else(|| AuthError::InternalError("OAuth client not configured".to_string()))?;
+        let oauth_client = self.oauth_client.as_ref().ok_or_else(|| {
+            AuthError::InternalError("OAuth client not configured".to_string())
+        })?;
 
         // Load state from state store using CSRF token as key
-        let stored_state =
-            self.state_store.load(csrf_token).await?.ok_or_else(|| {
-                AuthError::InternalError("Authorization state not found".to_string())
-            })?;
+        let stored_state = self.state_store.load(csrf_token).await?.ok_or_else(|| {
+            AuthError::InternalError("Authorization state not found".to_string())
+        })?;
 
         // Delete state after retrieval (one-time use)
         self.state_store.delete(csrf_token).await?;
@@ -679,7 +703,9 @@ impl AuthorizationManager {
                         parsed
                     }
                     Err(parse_err) => {
-                        return Err(AuthError::TokenExchangeFailed(parse_err.to_string()));
+                        return Err(AuthError::TokenExchangeFailed(
+                            parse_err.to_string(),
+                        ));
                     }
                 }
             }
@@ -729,11 +755,11 @@ impl AuthorizationManager {
     /// refresh access token
     pub async fn refresh_token(
         &self,
-    ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>, AuthError> {
-        let oauth_client = self
-            .oauth_client
-            .as_ref()
-            .ok_or_else(|| AuthError::InternalError("OAuth client not configured".to_string()))?;
+    ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>, AuthError>
+    {
+        let oauth_client = self.oauth_client.as_ref().ok_or_else(|| {
+            AuthError::InternalError("OAuth client not configured".to_string())
+        })?;
 
         let stored = self.credential_store.load().await?;
         let current_credentials = stored
@@ -746,7 +772,9 @@ impl AuthorizationManager {
         debug!("refresh token: {:?}", refresh_token);
 
         let token_result = oauth_client
-            .exchange_refresh_token(&RefreshToken::new(refresh_token.secret().to_string()))
+            .exchange_refresh_token(&RefreshToken::new(
+                refresh_token.secret().to_string(),
+            ))
             .request_async(&self.http_client)
             .await
             .map_err(|e| AuthError::TokenRefreshFailed(e.to_string()))?;
@@ -817,7 +845,9 @@ impl AuthorizationManager {
         base_url: &Url,
     ) -> Result<Option<AuthorizationMetadata>, AuthError> {
         for discovery_url in Self::generate_discovery_urls(base_url) {
-            if let Some(metadata) = self.fetch_authorization_metadata(&discovery_url).await? {
+            if let Some(metadata) =
+                self.fetch_authorization_metadata(&discovery_url).await?
+            {
                 return Ok(Some(metadata));
             }
         }
@@ -861,7 +891,8 @@ impl AuthorizationManager {
     async fn discover_oauth_server_via_resource_metadata(
         &self,
     ) -> Result<Option<AuthorizationMetadata>, AuthError> {
-        let Some(resource_metadata_url) = self.discover_resource_metadata_url().await? else {
+        let Some(resource_metadata_url) = self.discover_resource_metadata_url().await?
+        else {
             return Ok(None);
         };
 
@@ -892,20 +923,25 @@ impl AuthorizationManager {
                 Err(_) => match resource_metadata_url.join(candidate) {
                     Ok(url) => url,
                     Err(e) => {
-                        debug!("Failed to resolve authorization server URL `{candidate}`: {e}");
+                        debug!(
+                            "Failed to resolve authorization server URL `{candidate}`: {e}"
+                        );
                         continue;
                     }
                 },
             };
 
             if candidate_url.path().contains("/.well-known/") {
-                if let Some(metadata) = self.fetch_authorization_metadata(&candidate_url).await? {
+                if let Some(metadata) =
+                    self.fetch_authorization_metadata(&candidate_url).await?
+                {
                     return Ok(Some(metadata));
                 }
                 continue;
             }
 
-            if let Some(metadata) = self.try_discover_oauth_server(&candidate_url).await? {
+            if let Some(metadata) = self.try_discover_oauth_server(&candidate_url).await?
+            {
                 return Ok(Some(metadata));
             }
         }
@@ -941,7 +977,10 @@ impl AuthorizationManager {
 
     /// Extract the resource metadata url from the WWW-Authenticate header value.
     /// https://www.rfc-editor.org/rfc/rfc9728.html#name-use-of-www-authenticate-for
-    async fn fetch_resource_metadata_url(&self, url: &Url) -> Result<Option<Url>, AuthError> {
+    async fn fetch_resource_metadata_url(
+        &self,
+        url: &Url,
+    ) -> Result<Option<Url>, AuthError> {
         let response = match self
             .http_client
             .get(url.clone())
@@ -1016,13 +1055,19 @@ impl AuthorizationManager {
             .json::<ResourceServerMetadata>()
             .await
             .map_err(|e| {
-                AuthError::MetadataError(format!("Failed to parse resource metadata: {}", e))
+                AuthError::MetadataError(format!(
+                    "Failed to parse resource metadata: {}",
+                    e
+                ))
             })?;
         Ok(Some(metadata))
     }
 
     /// Extracts a url following `resource_metadata=` in a header value
-    fn extract_resource_metadata_url_from_header(header: &str, base_url: &Url) -> Option<Url> {
+    fn extract_resource_metadata_url_from_header(
+        header: &str,
+        base_url: &Url,
+    ) -> Option<Url> {
         let header_lowercase = header.to_ascii_lowercase();
         let fragment_key = "resource_metadata=";
         let mut search_offset = 0;
@@ -1132,7 +1177,10 @@ impl AuthorizationSession {
                     .register_client(client_name.unwrap_or("MCP Client"), redirect_uri)
                     .await
                     .map_err(|e| {
-                        AuthError::RegistrationFailed(format!("Dynamic registration failed: {}", e))
+                        AuthError::RegistrationFailed(format!(
+                            "Dynamic registration failed: {}",
+                            e
+                        ))
                     })?
             }
         } else {
@@ -1177,7 +1225,8 @@ impl AuthorizationSession {
         &self,
         code: &str,
         csrf_token: &str,
-    ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>, AuthError> {
+    ) -> Result<StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>, AuthError>
+    {
         self.auth_manager
             .exchange_code_for_token(code, csrf_token)
             .await
@@ -1192,7 +1241,10 @@ pub struct AuthorizedHttpClient {
 
 impl AuthorizedHttpClient {
     /// create new authorized http client
-    pub fn new(auth_manager: Arc<AuthorizationManager>, client: Option<HttpClient>) -> Self {
+    pub fn new(
+        auth_manager: Arc<AuthorizationManager>,
+        client: Option<HttpClient>,
+    ) -> Self {
         let inner_client = client.unwrap_or_default();
         Self {
             auth_manager,
@@ -1218,7 +1270,10 @@ impl AuthorizedHttpClient {
     }
 
     /// send post request
-    pub async fn post<U: IntoUrl>(&self, url: U) -> Result<reqwest::RequestBuilder, AuthError> {
+    pub async fn post<U: IntoUrl>(
+        &self,
+        url: U,
+    ) -> Result<reqwest::RequestBuilder, AuthError> {
         self.request(reqwest::Method::POST, url).await
     }
 }
@@ -1259,7 +1314,9 @@ impl OAuthState {
                 manager.get_credentials().await
             }
             OAuthState::Session(session) => session.get_credentials().await,
-            OAuthState::AuthorizedHttpClient(client) => client.auth_manager.get_credentials().await,
+            OAuthState::AuthorizedHttpClient(client) => {
+                client.auth_manager.get_credentials().await
+            }
         }
     }
 
@@ -1303,8 +1360,13 @@ impl OAuthState {
         redirect_uri: &str,
         client_name: Option<&str>,
     ) -> Result<(), AuthError> {
-        self.start_authorization_with_metadata_url(scopes, redirect_uri, client_name, None)
-            .await
+        self.start_authorization_with_metadata_url(
+            scopes,
+            redirect_uri,
+            client_name,
+            None,
+        )
+        .await
     }
 
     /// start authorization with optional client metadata URL (SEP-991)
@@ -1317,7 +1379,9 @@ impl OAuthState {
     ) -> Result<(), AuthError> {
         if let OAuthState::Unauthorized(mut manager) = std::mem::replace(
             self,
-            OAuthState::Unauthorized(AuthorizationManager::new(DEFAULT_EXCHANGE_URL).await?),
+            OAuthState::Unauthorized(
+                AuthorizationManager::new(DEFAULT_EXCHANGE_URL).await?,
+            ),
         ) {
             debug!("start discovery");
             let metadata = manager.discover_metadata().await?;
@@ -1344,7 +1408,9 @@ impl OAuthState {
     pub async fn complete_authorization(&mut self) -> Result<(), AuthError> {
         if let OAuthState::Session(session) = std::mem::replace(
             self,
-            OAuthState::Unauthorized(AuthorizationManager::new(DEFAULT_EXCHANGE_URL).await?),
+            OAuthState::Unauthorized(
+                AuthorizationManager::new(DEFAULT_EXCHANGE_URL).await?,
+            ),
         ) {
             *self = OAuthState::Authorized(session.auth_manager);
             Ok(())
@@ -1356,7 +1422,9 @@ impl OAuthState {
     pub async fn to_authorized_http_client(&mut self) -> Result<(), AuthError> {
         if let OAuthState::Authorized(manager) = std::mem::replace(
             self,
-            OAuthState::Authorized(AuthorizationManager::new(DEFAULT_EXCHANGE_URL).await?),
+            OAuthState::Authorized(
+                AuthorizationManager::new(DEFAULT_EXCHANGE_URL).await?,
+            ),
         ) {
             *self = OAuthState::AuthorizedHttpClient(AuthorizedHttpClient::new(
                 Arc::new(manager),
@@ -1372,7 +1440,9 @@ impl OAuthState {
     /// get current authorization url
     pub async fn get_authorization_url(&self) -> Result<String, AuthError> {
         match self {
-            OAuthState::Session(session) => Ok(session.get_authorization_url().to_string()),
+            OAuthState::Session(session) => {
+                Ok(session.get_authorization_url().to_string())
+            }
             OAuthState::Unauthorized(_) => {
                 Err(AuthError::InternalError("Not in session state".to_string()))
             }
@@ -1386,7 +1456,11 @@ impl OAuthState {
     }
 
     /// handle authorization callback
-    pub async fn handle_callback(&mut self, code: &str, csrf_token: &str) -> Result<(), AuthError> {
+    pub async fn handle_callback(
+        &mut self,
+        code: &str,
+        csrf_token: &str,
+    ) -> Result<(), AuthError> {
         match self {
             OAuthState::Session(session) => {
                 session.handle_callback(code, csrf_token).await?;
@@ -1455,8 +1529,8 @@ mod tests {
     use url::Url;
 
     use super::{
-        AuthError, AuthorizationManager, InMemoryStateStore, StateStore, StoredAuthorizationState,
-        is_https_url,
+        AuthError, AuthorizationManager, InMemoryStateStore, StateStore,
+        StoredAuthorizationState, is_https_url,
     };
 
     // SEP-991: URL-based Client IDs
@@ -1487,7 +1561,9 @@ mod tests {
     fn parses_resource_metadata_parameter() {
         let header = r#"Bearer error="invalid_request", error_description="missing token", resource_metadata="https://example.com/.well-known/oauth-protected-resource/api""#;
         let base = Url::parse("https://example.com/api").unwrap();
-        let parsed = AuthorizationManager::extract_resource_metadata_url_from_header(header, &base);
+        let parsed = AuthorizationManager::extract_resource_metadata_url_from_header(
+            header, &base,
+        );
         assert_eq!(
             parsed.unwrap().as_str(),
             "https://example.com/.well-known/oauth-protected-resource/api"
@@ -1498,7 +1574,9 @@ mod tests {
     fn parses_relative_resource_metadata_parameter() {
         let header = r#"Bearer error="invalid_request", resource_metadata="/.well-known/oauth-protected-resource/api""#;
         let base = Url::parse("https://example.com/api").unwrap();
-        let parsed = AuthorizationManager::extract_resource_metadata_url_from_header(header, &base);
+        let parsed = AuthorizationManager::extract_resource_metadata_url_from_header(
+            header, &base,
+        );
         assert_eq!(
             parsed.unwrap().as_str(),
             "https://example.com/.well-known/oauth-protected-resource/api"
@@ -1553,7 +1631,8 @@ mod tests {
 
     #[test]
     fn well_known_paths_root() {
-        let paths = AuthorizationManager::well_known_paths("/", "oauth-authorization-server");
+        let paths =
+            AuthorizationManager::well_known_paths("/", "oauth-authorization-server");
         assert_eq!(
             paths,
             vec!["/.well-known/oauth-authorization-server".to_string()]
@@ -1562,7 +1641,8 @@ mod tests {
 
     #[test]
     fn well_known_paths_with_suffix() {
-        let paths = AuthorizationManager::well_known_paths("/mcp", "oauth-authorization-server");
+        let paths =
+            AuthorizationManager::well_known_paths("/mcp", "oauth-authorization-server");
         assert_eq!(
             paths,
             vec![
@@ -1575,8 +1655,10 @@ mod tests {
 
     #[test]
     fn well_known_paths_trailing_slash() {
-        let paths =
-            AuthorizationManager::well_known_paths("/v1/mcp/", "oauth-authorization-server");
+        let paths = AuthorizationManager::well_known_paths(
+            "/v1/mcp/",
+            "oauth-authorization-server",
+        );
         assert_eq!(
             paths,
             vec![

@@ -8,7 +8,9 @@ mod common;
 async fn main() -> Result<()> {
     // Initialize the tracing subscriber with file and stdout logging
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive(tracing::Level::DEBUG.into()),
+        )
         .with_writer(std::io::stderr)
         .with_ansi(false)
         .init();

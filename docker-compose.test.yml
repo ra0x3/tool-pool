@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      # Mount source code for live development
+      - .:/workspace:rw
+      # Use named volumes for build caches to speed up compilation
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - target-cache:/workspace/target
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TERM_COLOR=always
+    command: cargo test --all-features
+
+  # Service for running specific tests
+  test-python:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - .:/workspace:rw
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - target-cache:/workspace/target
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TERM_COLOR=always
+    command: cargo test --all-features -p rmcp --test test_with_python
+
+  test-js:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - .:/workspace:rw
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - target-cache:/workspace/target
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TERM_COLOR=always
+    command: cargo test --all-features -p rmcp --test test_with_js
+
+  # Service for running clippy
+  clippy:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - .:/workspace:rw
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - target-cache:/workspace/target
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TERM_COLOR=always
+    command: cargo clippy --all-targets --all-features -- -D warnings
+
+  # Service for checking formatting
+  fmt:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - .:/workspace:rw
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+      - target-cache:/workspace/target
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TERM_COLOR=always
+    command: cargo +nightly fmt --all -- --check
+
+volumes:
+  cargo-registry:
+  cargo-git:
+  target-cache:

@@ -1,6 +1,7 @@
 //! Test tool macros, including documentation for generated fns.
 
 //cargo test --test test_tool_macros --features "client server"
+#![cfg(all(feature = "client", feature = "server"))]
 // Enforce that all generated code has sufficient docs to pass missing_docs lint
 #![deny(missing_docs)]
 #![allow(dead_code)]

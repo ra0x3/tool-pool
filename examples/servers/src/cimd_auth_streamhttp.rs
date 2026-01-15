@@ -16,7 +16,9 @@ use axum::{
 use rand::{Rng, distr::Alphanumeric};
 use rmcp::transport::{
     StreamableHttpServerConfig,
-    streamable_http_server::{session::local::LocalSessionManager, tower::StreamableHttpService},
+    streamable_http_server::{
+        session::local::LocalSessionManager, tower::StreamableHttpService,
+    },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -83,7 +85,9 @@ fn validate_client_id_url(raw: &str) -> Result<String, String> {
     // MUST contain a path component (cannot be empty or just "/")
     let path = url.path();
     if path.is_empty() || path == "/" {
-        return Err("invalid_client_id: client_id URL MUST contain a path component".to_string());
+        return Err(
+            "invalid_client_id: client_id URL MUST contain a path component".to_string(),
+        );
     }
 
     // MUST NOT contain single-dot or double-dot path segments
@@ -97,7 +101,8 @@ fn validate_client_id_url(raw: &str) -> Result<String, String> {
     // MUST NOT contain a fragment component
     if url.fragment().is_some() {
         return Err(
-            "invalid_client_id: client_id URL MUST NOT contain a fragment component".to_string(),
+            "invalid_client_id: client_id URL MUST NOT contain a fragment component"
+                .to_string(),
         );
     }
 
@@ -114,7 +119,9 @@ fn validate_client_id_url(raw: &str) -> Result<String, String> {
 
 /// Fetch and validate the client metadata document from the client_id URL.
 /// Implements MUST / MUST NOT rules from CIMD section 4.1.
-async fn fetch_and_validate_client_metadata(client_id_url: &str) -> Result<Value, String> {
+async fn fetch_and_validate_client_metadata(
+    client_id_url: &str,
+) -> Result<Value, String> {
     let client = reqwest::Client::new();
     let res = client
         .get(client_id_url)
@@ -124,19 +131,24 @@ async fn fetch_and_validate_client_metadata(client_id_url: &str) -> Result<Value
         )
         .send()
         .await
-        .map_err(|_| "invalid_client: failed to fetch client metadata document".to_string())?;
+        .map_err(|_| {
+            "invalid_client: failed to fetch client metadata document".to_string()
+        })?;
 
     if !res.status().is_success() {
-        return Err("invalid_client: failed to fetch client metadata document".to_string());
+        return Err(
+            "invalid_client: failed to fetch client metadata document".to_string()
+        );
     }
 
-    let json: Value = res
-        .json()
-        .await
-        .map_err(|_| "invalid_client: client metadata document is not valid JSON".to_string())?;
+    let json: Value = res.json().await.map_err(|_| {
+        "invalid_client: client metadata document is not valid JSON".to_string()
+    })?;
 
     if !json.is_object() {
-        return Err("invalid_client: client metadata document must be a JSON object".to_string());
+        return Err(
+            "invalid_client: client metadata document must be a JSON object".to_string(),
+        );
     }
 
     // MUST contain a client_id property equal to the URL of the document
@@ -158,7 +170,8 @@ async fn fetch_and_validate_client_metadata(client_id_url: &str) -> Result<Value
                 "client_secret_basic",
                 "client_secret_jwt",
             ];
-            if forbidden.contains(&method_str) || method_str.starts_with("client_secret_") {
+            if forbidden.contains(&method_str) || method_str.starts_with("client_secret_")
+            {
                 return Err("invalid_client: token_endpoint_auth_method MUST NOT be a shared secret based method".to_string());
             }
         }
@@ -167,7 +180,8 @@ async fn fetch_and_validate_client_metadata(client_id_url: &str) -> Result<Value
     // client_secret and client_secret_expires_at MUST NOT be used
     if json.get("client_secret").is_some() {
         return Err(
-            "invalid_client: client_secret MUST NOT be present in client metadata".to_string(),
+            "invalid_client: client_secret MUST NOT be present in client metadata"
+                .to_string(),
         );
     }
     if json.get("client_secret_expires_at").is_some() {
@@ -181,7 +195,10 @@ async fn fetch_and_validate_client_metadata(client_id_url: &str) -> Result<Value
 }
 
 /// Validate redirect_uri against metadata.redirect_uris (exact match).
-fn validate_redirect_uri(requested_redirect_uri: &str, metadata: &Value) -> Result<(), String> {
+fn validate_redirect_uri(
+    requested_redirect_uri: &str,
+    metadata: &Value,
+) -> Result<(), String> {
     let redirect_uris = metadata.get("redirect_uris").ok_or_else(|| {
         "invalid_client: client metadata must include redirect_uris array".to_string()
     })?;
@@ -205,8 +222,8 @@ fn validate_redirect_uri(requested_redirect_uri: &str, metadata: &Value) -> Resu
 
 /// Minimal Authorization Server Metadata with CIMD support.
 async fn oauth_metadata() -> impl IntoResponse {
-    let issuer =
-        std::env::var("CIMD_ISSUER").unwrap_or_else(|_| format!("http://{}", BIND_ADDRESS));
+    let issuer = std::env::var("CIMD_ISSUER")
+        .unwrap_or_else(|_| format!("http://{}", BIND_ADDRESS));
 
     let body = serde_json::json!({
         "issuer": issuer,
@@ -346,7 +363,8 @@ async fn handle_authorize(
         ));
     }
 
-    let client_id_url = validate_client_id_url(client_id_raw).map_err(|e| bad_request(&e))?;
+    let client_id_url =
+        validate_client_id_url(client_id_raw).map_err(|e| bad_request(&e))?;
     let metadata = fetch_and_validate_client_metadata(&client_id_url)
         .await
         .map_err(|e| bad_request(&e))?;
@@ -404,7 +422,10 @@ struct TokenRequest {
     code: Option<String>,
 }
 
-async fn token(State(state): State<AppState>, Form(form): Form<TokenRequest>) -> impl IntoResponse {
+async fn token(
+    State(state): State<AppState>,
+    Form(form): Form<TokenRequest>,
+) -> impl IntoResponse {
     if form.grant_type.as_deref() != Some("authorization_code") {
         let body = serde_json::json!({
             "error": "unsupported_grant_type",

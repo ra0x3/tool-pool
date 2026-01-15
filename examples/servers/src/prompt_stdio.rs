@@ -142,9 +142,9 @@ impl PromptServer {
         Parameters(args): Parameters<CodeReviewArgs>,
     ) -> Result<GetPromptResult, McpError> {
         let prefs = self.user_preferences.read().await;
-        let focus_areas = args
-            .focus_areas
-            .unwrap_or_else(|| vec!["correctness".to_string(), "performance".to_string()]);
+        let focus_areas = args.focus_areas.unwrap_or_else(|| {
+            vec!["correctness".to_string(), "performance".to_string()]
+        });
 
         let messages = vec![
             PromptMessage::new_text(
@@ -394,7 +394,9 @@ impl ServerHandler for PromptServer {
 async fn main() -> Result<()> {
     // Initialize tracing
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()),
+        )
         .init();
 
     println!("MCP Prompt Server Example");

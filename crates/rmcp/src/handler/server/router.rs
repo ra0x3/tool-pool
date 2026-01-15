@@ -54,7 +54,10 @@ where
         self
     }
 
-    pub fn with_prompts(mut self, routes: impl IntoIterator<Item = PromptRoute<S>>) -> Self {
+    pub fn with_prompts(
+        mut self,
+        routes: impl IntoIterator<Item = PromptRoute<S>>,
+    ) -> Self {
         for route in routes {
             self.prompt_router.add_route(route);
         }
@@ -85,11 +88,12 @@ where
                 if self.tool_router.has_route(request.params.name.as_ref())
                     || !self.tool_router.transparent_when_not_found
                 {
-                    let tool_call_context = crate::handler::server::tool::ToolCallContext::new(
-                        self.service.as_ref(),
-                        request.params,
-                        context,
-                    );
+                    let tool_call_context =
+                        crate::handler::server::tool::ToolCallContext::new(
+                            self.service.as_ref(),
+                            request.params,
+                            context,
+                        );
                     let result = self.tool_router.call(tool_call_context).await?;
                     Ok(ServerResult::CallToolResult(result))
                 } else {
@@ -107,12 +111,13 @@ where
             }
             ClientRequest::GetPromptRequest(request) => {
                 if self.prompt_router.has_route(request.params.name.as_ref()) {
-                    let prompt_context = crate::handler::server::prompt::PromptContext::new(
-                        self.service.as_ref(),
-                        request.params.name,
-                        request.params.arguments,
-                        context,
-                    );
+                    let prompt_context =
+                        crate::handler::server::prompt::PromptContext::new(
+                            self.service.as_ref(),
+                            request.params.name,
+                            request.params.arguments,
+                            context,
+                        );
                     let result = self.prompt_router.get_prompt(prompt_context).await?;
                     Ok(ServerResult::GetPromptResult(result))
                 } else {

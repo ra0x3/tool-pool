@@ -61,7 +61,9 @@ pub trait GetPromptHandler<S, A> {
 }
 
 /// Type alias for dynamic prompt handlers
-pub type DynGetPromptHandler<S> = dyn for<'a> Fn(PromptContext<'a, S>) -> BoxFuture<'a, Result<GetPromptResult, crate::ErrorData>>
+pub type DynGetPromptHandler<S> = dyn for<'a> Fn(
+        PromptContext<'a, S>,
+    ) -> BoxFuture<'a, Result<GetPromptResult, crate::ErrorData>>
     + Send
     + Sync;
 
@@ -144,7 +146,9 @@ where
 pub struct PromptName(pub String);
 
 impl<S> FromContextPart<PromptContext<'_, S>> for PromptName {
-    fn from_context_part(context: &mut PromptContext<S>) -> Result<Self, crate::ErrorData> {
+    fn from_context_part(
+        context: &mut PromptContext<S>,
+    ) -> Result<Self, crate::ErrorData> {
         Ok(Self(context.name.clone()))
     }
 }
@@ -154,11 +158,16 @@ impl<S, P> FromContextPart<PromptContext<'_, S>> for Parameters<P>
 where
     P: DeserializeOwned,
 {
-    fn from_context_part(context: &mut PromptContext<S>) -> Result<Self, crate::ErrorData> {
+    fn from_context_part(
+        context: &mut PromptContext<S>,
+    ) -> Result<Self, crate::ErrorData> {
         let params = if let Some(args_map) = context.arguments.take() {
             let args_value = serde_json::Value::Object(args_map);
             serde_json::from_value::<P>(args_value).map_err(|e| {
-                crate::ErrorData::invalid_params(format!("Failed to parse parameters: {}", e), None)
+                crate::ErrorData::invalid_params(
+                    format!("Failed to parse parameters: {}", e),
+                    None,
+                )
             })?
         } else {
             // Try to deserialize from empty object for optional fields

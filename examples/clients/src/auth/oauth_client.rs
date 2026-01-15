@@ -139,7 +139,9 @@ async fn main() -> Result<()> {
         .write_all(oauth_state.get_authorization_url().await?.as_bytes())
         .await?;
     output
-        .write_all(b"\n\nWaiting for browser callback, please do not close this window...\n")
+        .write_all(
+            b"\n\nWaiting for browser callback, please do not close this window...\n",
+        )
         .await?;
     output.flush().await?;
 

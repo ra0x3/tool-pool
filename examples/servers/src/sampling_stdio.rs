@@ -135,7 +135,9 @@ impl ServerHandler for SamplingDemoServer {
 async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()),
+        )
         .with_writer(std::io::stderr)
         .with_ansi(false)
         .init();

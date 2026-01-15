@@ -50,7 +50,8 @@ impl<S: Send + Sync + 'static> PromptRoute<S> {
     where
         H: for<'a> Fn(
                 PromptContext<'a, S>,
-            ) -> BoxFuture<'a, Result<GetPromptResult, crate::ErrorData>>
+            )
+                -> BoxFuture<'a, Result<GetPromptResult, crate::ErrorData>>
             + Send
             + Sync
             + 'static,
@@ -128,7 +129,8 @@ impl<S> Clone for PromptRouter<S> {
 
 impl<S> IntoIterator for PromptRouter<S> {
     type Item = PromptRoute<S>;
-    type IntoIter = std::collections::hash_map::IntoValues<Cow<'static, str>, PromptRoute<S>>;
+    type IntoIter =
+        std::collections::hash_map::IntoValues<Cow<'static, str>, PromptRoute<S>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.map.into_values()

@@ -13,8 +13,10 @@ where
         uri: std::sync::Arc<str>,
         session_id: std::sync::Arc<str>,
         mut auth_token: Option<String>,
-    ) -> Result<(), crate::transport::streamable_http_client::StreamableHttpError<Self::Error>>
-    {
+    ) -> Result<
+        (),
+        crate::transport::streamable_http_client::StreamableHttpError<Self::Error>,
+    > {
         if auth_token.is_none() {
             auth_token = Some(self.get_access_token().await?);
         }

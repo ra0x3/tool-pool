@@ -20,7 +20,9 @@ use axum::{
 };
 use rmcp::transport::{
     StreamableHttpServerConfig,
-    streamable_http_server::{session::local::LocalSessionManager, tower::StreamableHttpService},
+    streamable_http_server::{
+        session::local::LocalSessionManager, tower::StreamableHttpService,
+    },
 };
 mod common;
 use common::counter::Counter;
@@ -99,7 +101,9 @@ async fn health_check() -> &'static str {
 }
 
 // Token generation endpoint (simplified example)
-async fn get_token(Path(token_id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+async fn get_token(
+    Path(token_id): Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
     // In a real application, you should authenticate the user and generate a real token
     if token_id == "demo" || token_id == "test" {
         let token = format!("{}-token", token_id);
@@ -144,13 +148,9 @@ async fn main() -> Result<()> {
         .route("/token/{token_id}", get(get_token));
 
     // Create protected MCP routes (require authorization)
-    let protected_mcp_router =
-        Router::new()
-            .nest_service("/mcp", mcp_service)
-            .layer(middleware::from_fn_with_state(
-                token_store.clone(),
-                auth_middleware,
-            ));
+    let protected_mcp_router = Router::new().nest_service("/mcp", mcp_service).layer(
+        middleware::from_fn_with_state(token_store.clone(), auth_middleware),
+    );
 
     // Create main router, public endpoints don't require authorization
     let app = Router::new()
