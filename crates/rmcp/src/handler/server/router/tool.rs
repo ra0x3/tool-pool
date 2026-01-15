@@ -1,11 +1,14 @@
 use std::{borrow::Cow, sync::Arc};
 
 use futures::{FutureExt, future::BoxFuture};
+#[cfg(feature = "schemars")]
 use schemars::JsonSchema;
 
+#[cfg(feature = "schemars")]
+use crate::handler::server::tool::schema_for_type;
 use crate::{
     handler::server::{
-        tool::{CallToolHandler, DynCallToolHandler, ToolCallContext, schema_for_type},
+        tool::{CallToolHandler, DynCallToolHandler, ToolCallContext},
         tool_name_validation::validate_and_warn_tool_name,
     },
     model::{CallToolResult, Tool, ToolAnnotations},
@@ -116,12 +119,18 @@ where
     C: CallToolHandler<S, A> + Send + Sync + Clone + 'static,
 {
     fn name(self, name: impl Into<Cow<'static, str>>) -> WithToolAttr<Self, S, A> {
+        let input_schema = {
+            #[cfg(feature = "schemars")]
+            {
+                schema_for_type::<crate::model::JsonObject>()
+            }
+            #[cfg(not(feature = "schemars"))]
+            {
+                Arc::new(crate::model::JsonObject::new())
+            }
+        };
         WithToolAttr {
-            attr: Tool::new(
-                name.into(),
-                "",
-                schema_for_type::<crate::model::JsonObject>(),
-            ),
+            attr: Tool::new(name.into(), "", input_schema),
             call: self,
             _marker: std::marker::PhantomData,
         }
@@ -155,6 +164,7 @@ where
         self.attr.description = Some(description.into());
         self
     }
+    #[cfg(feature = "schemars")]
     pub fn parameters<T: JsonSchema + 'static>(mut self) -> Self {
         self.attr.input_schema = schema_for_type::<T>();
         self
