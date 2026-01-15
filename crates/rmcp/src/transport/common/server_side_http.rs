@@ -129,10 +129,15 @@ pub(crate) const fn internal_error_response<E: Display>(
     }
 }
 
-pub(crate) fn unexpected_message_response(expect: &str) -> Response<BoxBody<Bytes, Infallible>> {
+pub(crate) fn unexpected_message_response(
+    expect: &str,
+) -> Response<BoxBody<Bytes, Infallible>> {
     Response::builder()
         .status(http::StatusCode::UNPROCESSABLE_ENTITY)
-        .body(Full::new(Bytes::from(format!("Unexpected message, expect {expect}"))).boxed())
+        .body(
+            Full::new(Bytes::from(format!("Unexpected message, expect {expect}")))
+                .boxed(),
+        )
         .expect("valid response")
 }
 
@@ -145,14 +150,18 @@ where
 {
     match body.collect().await {
         Ok(bytes) => {
-            match serde_json::from_reader::<_, ClientJsonRpcMessage>(bytes.aggregate().reader()) {
+            match serde_json::from_reader::<_, ClientJsonRpcMessage>(
+                bytes.aggregate().reader(),
+            ) {
                 Ok(message) => Ok(message),
                 Err(e) => {
                     let response = Response::builder()
                         .status(http::StatusCode::UNSUPPORTED_MEDIA_TYPE)
                         .body(
-                            Full::new(Bytes::from(format!("fail to deserialize request body {e}")))
-                                .boxed(),
+                            Full::new(Bytes::from(format!(
+                                "fail to deserialize request body {e}"
+                            )))
+                            .boxed(),
                         )
                         .expect("valid response");
                     Err(response)
@@ -162,7 +171,10 @@ where
         Err(e) => {
             let response = Response::builder()
                 .status(http::StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Full::new(Bytes::from(format!("Failed to read request body: {e}"))).boxed())
+                .body(
+                    Full::new(Bytes::from(format!("Failed to read request body: {e}")))
+                        .boxed(),
+                )
                 .expect("valid response");
             Err(response)
         }

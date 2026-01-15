@@ -10,8 +10,11 @@ fn extract_json_inner_type(ty: &syn::Type) -> Option<&syn::Type> {
     if let syn::Type::Path(type_path) = ty {
         if let Some(last_segment) = type_path.path.segments.last() {
             if last_segment.ident == "Json" {
-                if let syn::PathArguments::AngleBracketed(args) = &last_segment.arguments {
-                    if let Some(syn::GenericArgument::Type(inner_type)) = args.args.first() {
+                if let syn::PathArguments::AngleBracketed(args) = &last_segment.arguments
+                {
+                    if let Some(syn::GenericArgument::Type(inner_type)) =
+                        args.args.first()
+                    {
                         return Some(inner_type);
                     }
                 }
@@ -267,7 +270,9 @@ pub fn tool(attr: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
     let output_schema_expr = attribute.output_schema.or_else(|| {
         // Try to generate schema from return type
         match &fn_item.sig.output {
-            syn::ReturnType::Type(_, ret_type) => extract_schema_from_return_type(ret_type),
+            syn::ReturnType::Type(_, ret_type) => {
+                extract_schema_from_return_type(ret_type)
+            }
             _ => None,
         }
     });

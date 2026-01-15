@@ -96,7 +96,10 @@ async fn override_doc_prompt(_server: &TestServer) -> Vec<PromptMessage> {
 
 // Test prompt with arguments
 #[prompt]
-async fn args_prompt(_server: &TestServer, _args: Parameters<TestArgs>) -> Vec<PromptMessage> {
+async fn args_prompt(
+    _server: &TestServer,
+    _args: Parameters<TestArgs>,
+) -> Vec<PromptMessage> {
     vec![PromptMessage::new_text(
         PromptMessageRole::Assistant,
         "Args response",

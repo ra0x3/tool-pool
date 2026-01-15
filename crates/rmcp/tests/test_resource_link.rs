@@ -17,13 +17,16 @@ fn test_resource_link_in_tool_result() {
 
     // Verify JSON contains expected structure
     assert!(
-        json.contains("\"type\":\"resource_link\"") || json.contains("\"type\": \"resource_link\"")
+        json.contains("\"type\":\"resource_link\"")
+            || json.contains("\"type\": \"resource_link\"")
     );
     assert!(
         json.contains("\"uri\":\"file:///test/file.txt\"")
             || json.contains("\"uri\": \"file:///test/file.txt\"")
     );
-    assert!(json.contains("\"name\":\"test.txt\"") || json.contains("\"name\": \"test.txt\""));
+    assert!(
+        json.contains("\"name\":\"test.txt\"") || json.contains("\"name\": \"test.txt\"")
+    );
 
     // Test deserialization
     let deserialized: CallToolResult = serde_json::from_str(&json).unwrap();

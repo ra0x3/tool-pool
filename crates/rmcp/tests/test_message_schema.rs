@@ -15,8 +15,8 @@ mod tests {
 
         let actual_json: serde_json::Value =
             serde_json::from_str(actual).expect("Failed to parse actual schema as JSON");
-        let expected_json: serde_json::Value =
-            serde_json::from_str(&expected).expect("Failed to parse expected schema as JSON");
+        let expected_json: serde_json::Value = serde_json::from_str(&expected)
+            .expect("Failed to parse expected schema as JSON");
 
         if actual_json == expected_json {
             println!("{} schema matches expected", name);
@@ -38,7 +38,8 @@ mod tests {
         // UPDATE_SCHEMA=1 cargo test -p rmcp --test test_message_schema --features="server client schemars"
         if std::env::var("UPDATE_SCHEMA").is_ok() {
             println!("UPDATE_SCHEMA is set, updating expected file");
-            std::fs::write(expected_file, actual).expect("Failed to update expected schema file");
+            std::fs::write(expected_file, actual)
+                .expect("Failed to update expected schema file");
             println!("Updated {}", expected_file);
         } else {
             println!("Set UPDATE_SCHEMA=1 to auto-update expected schemas");
@@ -52,7 +53,8 @@ mod tests {
         let schema = settings
             .into_generator()
             .into_root_schema_for::<ClientJsonRpcMessage>();
-        let schema_str = serde_json::to_string_pretty(&schema).expect("Failed to serialize schema");
+        let schema_str =
+            serde_json::to_string_pretty(&schema).expect("Failed to serialize schema");
 
         compare_schemas(
             "ClientJsonRpcMessage",
@@ -67,7 +69,8 @@ mod tests {
         let schema = settings
             .into_generator()
             .into_root_schema_for::<ServerJsonRpcMessage>();
-        let schema_str = serde_json::to_string_pretty(&schema).expect("Failed to serialize schema");
+        let schema_str =
+            serde_json::to_string_pretty(&schema).expect("Failed to serialize schema");
 
         compare_schemas(
             "ServerJsonRpcMessage",

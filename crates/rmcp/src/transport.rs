@@ -107,9 +107,9 @@ pub mod auth;
 #[cfg(feature = "auth")]
 #[cfg_attr(docsrs, doc(cfg(feature = "auth")))]
 pub use auth::{
-    AuthError, AuthorizationManager, AuthorizationSession, AuthorizedHttpClient, CredentialStore,
-    InMemoryCredentialStore, InMemoryStateStore, StateStore, StoredAuthorizationState,
-    StoredCredentials,
+    AuthError, AuthorizationManager, AuthorizationSession, AuthorizedHttpClient,
+    CredentialStore, InMemoryCredentialStore, InMemoryStateStore, StateStore,
+    StoredAuthorizationState, StoredCredentials,
 };
 
 // #[cfg(feature = "transport-ws")]
@@ -120,7 +120,9 @@ pub use auth::{
 pub mod streamable_http_server;
 #[cfg(feature = "transport-streamable-http-server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "transport-streamable-http-server")))]
-pub use streamable_http_server::tower::{StreamableHttpServerConfig, StreamableHttpService};
+pub use streamable_http_server::tower::{
+    StreamableHttpServerConfig, StreamableHttpService,
+};
 
 #[cfg(feature = "transport-streamable-http-client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "transport-streamable-http-client")))]
@@ -260,7 +262,9 @@ impl DynamicTransportError {
             error: Box::new(e),
         }
     }
-    pub fn downcast<T: Transport<R> + 'static, R: ServiceRole>(self) -> Result<T::Error, Self> {
+    pub fn downcast<T: Transport<R> + 'static, R: ServiceRole>(
+        self,
+    ) -> Result<T::Error, Self> {
         if !self.is::<T, R>() {
             Err(self)
         } else {
@@ -272,6 +276,7 @@ impl DynamicTransportError {
         }
     }
     pub fn is<T: Transport<R> + 'static, R: ServiceRole>(&self) -> bool {
-        self.error.is::<T::Error>() && self.transport_type_id == std::any::TypeId::of::<T>()
+        self.error.is::<T::Error>()
+            && self.transport_type_id == std::any::TypeId::of::<T>()
     }
 }

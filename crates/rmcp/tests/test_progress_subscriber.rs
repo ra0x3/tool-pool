@@ -1,3 +1,5 @@
+#![cfg(all(feature = "client", feature = "server"))]
+
 use futures::StreamExt;
 use rmcp::{
     ClientHandler, Peer, RoleServer, ServerHandler, ServiceExt,

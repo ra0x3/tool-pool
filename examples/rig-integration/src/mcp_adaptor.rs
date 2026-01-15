@@ -20,7 +20,9 @@ impl RigTool for McpToolAdaptor {
     fn definition(
         &self,
         _prompt: String,
-    ) -> std::pin::Pin<Box<dyn Future<Output = rig::completion::ToolDefinition> + Send + '_>> {
+    ) -> std::pin::Pin<
+        Box<dyn Future<Output = rig::completion::ToolDefinition> + Send + '_>,
+    > {
         Box::pin(std::future::ready(rig::completion::ToolDefinition {
             name: self.name(),
             description: self
@@ -36,8 +38,9 @@ impl RigTool for McpToolAdaptor {
     fn call(
         &self,
         args: String,
-    ) -> std::pin::Pin<Box<dyn Future<Output = Result<String, rig::tool::ToolError>> + Send + '_>>
-    {
+    ) -> std::pin::Pin<
+        Box<dyn Future<Output = Result<String, rig::tool::ToolError>> + Send + '_>,
+    > {
         let server = self.server.clone();
         Box::pin(async move {
             let call_mcp_tool_result = server

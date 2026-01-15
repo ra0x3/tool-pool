@@ -15,7 +15,9 @@ use rand::{Rng, distr::Alphanumeric};
 use rmcp::transport::{
     StreamableHttpServerConfig,
     auth::{AuthorizationMetadata, ClientRegistrationResponse, OAuthClientConfig},
-    streamable_http_server::{session::local::LocalSessionManager, tower::StreamableHttpService},
+    streamable_http_server::{
+        session::local::LocalSessionManager, tower::StreamableHttpService,
+    },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -653,13 +655,9 @@ async fn main() -> Result<()> {
         );
 
     // Create protected MCP routes (require authorization)
-    let protected_mcp_router =
-        Router::new()
-            .nest_service("/mcp", mcp_service)
-            .layer(middleware::from_fn_with_state(
-                oauth_store.clone(),
-                validate_token_middleware,
-            ));
+    let protected_mcp_router = Router::new().nest_service("/mcp", mcp_service).layer(
+        middleware::from_fn_with_state(oauth_store.clone(), validate_token_middleware),
+    );
 
     // Create CORS layer for the oauth authorization server endpoint
     let cors_layer = CorsLayer::new()

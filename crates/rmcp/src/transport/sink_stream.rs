@@ -68,11 +68,16 @@ pub enum TransportAdapterAsyncCombinedRW {}
 impl<Role, S> IntoTransport<Role, S::Error, TransportAdapterAsyncCombinedRW> for S
 where
     Role: ServiceRole,
-    S: Sink<TxJsonRpcMessage<Role>> + Stream<Item = RxJsonRpcMessage<Role>> + Send + 'static,
+    S: Sink<TxJsonRpcMessage<Role>>
+        + Stream<Item = RxJsonRpcMessage<Role>>
+        + Send
+        + 'static,
     S::Error: std::error::Error + Send + Sync + 'static,
 {
     fn into_transport(self) -> impl Transport<Role, Error = S::Error> + 'static {
         use futures::StreamExt;
-        IntoTransport::<Role, S::Error, TransportAdapterSinkStream>::into_transport(self.split())
+        IntoTransport::<Role, S::Error, TransportAdapterSinkStream>::into_transport(
+            self.split(),
+        )
     }
 }

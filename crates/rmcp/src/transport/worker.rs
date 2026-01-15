@@ -30,7 +30,9 @@ impl<E: std::error::Error + Send + 'static> WorkerQuitReason<E> {
             context: context.into(),
         }
     }
-    pub fn fatal_context(context: impl Into<Cow<'static, str>>) -> impl FnOnce(E) -> Self {
+    pub fn fatal_context(
+        context: impl Into<Cow<'static, str>>,
+    ) -> impl FnOnce(E) -> Self {
         |e| Self::Fatal {
             error: e,
             context: context.into(),
@@ -96,10 +98,12 @@ impl<W: Worker> WorkerTransport<W> {
     pub fn spawn_with_ct(worker: W, transport_task_ct: CancellationToken) -> Self {
         let config = worker.config();
         let worker_name = config.name;
-        let (to_transport_tx, from_handler_rx) =
-            tokio::sync::mpsc::channel::<WorkerSendRequest<W>>(config.channel_buffer_capacity);
-        let (to_handler_tx, from_transport_rx) =
-            tokio::sync::mpsc::channel::<RxJsonRpcMessage<W::Role>>(config.channel_buffer_capacity);
+        let (to_transport_tx, from_handler_rx) = tokio::sync::mpsc::channel::<
+            WorkerSendRequest<W>,
+        >(config.channel_buffer_capacity);
+        let (to_handler_tx, from_transport_rx) = tokio::sync::mpsc::channel::<
+            RxJsonRpcMessage<W::Role>,
+        >(config.channel_buffer_capacity);
         let context = WorkerContext {
             to_handler_tx,
             from_handler_rx,
@@ -125,7 +129,9 @@ impl<W: Worker> WorkerTransport<W> {
                         tracing::error!("worker quit with join error: {:?}", e);
                     }
                     WorkerQuitReason::Fatal { error, context } => {
-                        tracing::error!("worker quit with fatal: {error}, when {context}");
+                        tracing::error!(
+                            "worker quit with fatal: {error}, when {context}"
+                        );
                     }
                 })
                 .inspect(|_| {

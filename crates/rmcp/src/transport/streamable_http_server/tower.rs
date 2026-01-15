@@ -18,11 +18,13 @@ use crate::{
         OneshotTransport, TransportAdapterIdentity,
         common::{
             http_header::{
-                EVENT_STREAM_MIME_TYPE, HEADER_LAST_EVENT_ID, HEADER_SESSION_ID, JSON_MIME_TYPE,
+                EVENT_STREAM_MIME_TYPE, HEADER_LAST_EVENT_ID, HEADER_SESSION_ID,
+                JSON_MIME_TYPE,
             },
             server_side_http::{
                 BoxResponse, ServerSseMessage, accepted_response, expect_json,
-                internal_error_response, sse_stream_response, unexpected_message_response,
+                internal_error_response, sse_stream_response,
+                unexpected_message_response,
             },
         },
     },
@@ -84,7 +86,8 @@ impl<S, M> Clone for StreamableHttpService<S, M> {
     }
 }
 
-impl<RequestBody, S, M> tower_service::Service<Request<RequestBody>> for StreamableHttpService<S, M>
+impl<RequestBody, S, M> tower_service::Service<Request<RequestBody>>
+    for StreamableHttpService<S, M>
 where
     RequestBody: Body + Send + 'static,
     S: crate::Service<RoleServer>,
@@ -129,7 +132,10 @@ where
     fn get_service(&self) -> Result<S, std::io::Error> {
         (self.service_factory)()
     }
-    pub async fn handle<B>(&self, request: Request<B>) -> Response<BoxBody<Bytes, Infallible>>
+    pub async fn handle<B>(
+        &self,
+        request: Request<B>,
+    ) -> Response<BoxBody<Bytes, Infallible>>
     where
         B: Body + Send + 'static,
         B::Error: Display,
@@ -191,7 +197,10 @@ where
             // unauthorized
             return Ok(Response::builder()
                 .status(http::StatusCode::UNAUTHORIZED)
-                .body(Full::new(Bytes::from("Unauthorized: Session ID is required")).boxed())
+                .body(
+                    Full::new(Bytes::from("Unauthorized: Session ID is required"))
+                        .boxed(),
+                )
                 .expect("valid response"));
         };
         // check if session exists
@@ -254,7 +263,10 @@ where
         }
     }
 
-    async fn handle_post<B>(&self, request: Request<B>) -> Result<BoxResponse, BoxResponse>
+    async fn handle_post<B>(
+        &self,
+        request: Request<B>,
+    ) -> Result<BoxResponse, BoxResponse>
     where
         B: Body + Send + 'static,
         B::Error: Display,
@@ -316,7 +328,10 @@ where
                     // unauthorized
                     return Ok(Response::builder()
                         .status(http::StatusCode::UNAUTHORIZED)
-                        .body(Full::new(Bytes::from("Unauthorized: Session not found")).boxed())
+                        .body(
+                            Full::new(Bytes::from("Unauthorized: Session not found"))
+                                .boxed(),
+                        )
                         .expect("valid response"));
                 }
 
@@ -393,10 +408,11 @@ where
                     let session_manager = self.session_manager.clone();
                     let session_id = session_id.clone();
                     async move {
-                        let service = serve_server::<S, M::Transport, _, TransportAdapterIdentity>(
-                            service, transport,
-                        )
-                        .await;
+                        let service =
+                            serve_server::<S, M::Transport, _, TransportAdapterIdentity>(
+                                service, transport,
+                            )
+                            .await;
                         match service {
                             Ok(service) => {
                                 // on service created
@@ -410,7 +426,9 @@ where
                             .close_session(&session_id)
                             .await
                             .inspect_err(|e| {
-                                tracing::error!("Failed to close session {session_id}: {e}");
+                                tracing::error!(
+                                    "Failed to close session {session_id}: {e}"
+                                );
                             });
                     }
                 });
@@ -461,8 +479,9 @@ where
             match message {
                 ClientJsonRpcMessage::Request(mut request) => {
                     request.request.extensions_mut().insert(part);
-                    let (transport, receiver) =
-                        OneshotTransport::<RoleServer>::new(ClientJsonRpcMessage::Request(request));
+                    let (transport, receiver) = OneshotTransport::<RoleServer>::new(
+                        ClientJsonRpcMessage::Request(request),
+                    );
                     let service = serve_directly(service, transport, None);
                     tokio::spawn(async move {
                         // on service created
@@ -487,13 +506,18 @@ where
                     // ignore
                     Ok(accepted_response())
                 }
-                ClientJsonRpcMessage::Response(_json_rpc_response) => Ok(accepted_response()),
+                ClientJsonRpcMessage::Response(_json_rpc_response) => {
+                    Ok(accepted_response())
+                }
                 ClientJsonRpcMessage::Error(_json_rpc_error) => Ok(accepted_response()),
             }
         }
     }
 
-    async fn handle_delete<B>(&self, request: Request<B>) -> Result<BoxResponse, BoxResponse>
+    async fn handle_delete<B>(
+        &self,
+        request: Request<B>,
+    ) -> Result<BoxResponse, BoxResponse>
     where
         B: Body + Send + 'static,
         B::Error: Display,
@@ -508,7 +532,10 @@ where
             // unauthorized
             return Ok(Response::builder()
                 .status(http::StatusCode::UNAUTHORIZED)
-                .body(Full::new(Bytes::from("Unauthorized: Session ID is required")).boxed())
+                .body(
+                    Full::new(Bytes::from("Unauthorized: Session ID is required"))
+                        .boxed(),
+                )
                 .expect("valid response"));
         };
         // close session

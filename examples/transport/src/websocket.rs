@@ -12,7 +12,9 @@ mod common;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()),
+        )
         .init();
     start_server().await?;
     let client = http_client("ws://127.0.0.1:8001").await?;
@@ -103,7 +105,8 @@ where
                     tungstenite::Message::Text(json) => json,
                     _ => return self.poll_next(cx),
                 };
-                let message = match serde_json::from_str::<RxJsonRpcMessage<R>>(&message) {
+                let message = match serde_json::from_str::<RxJsonRpcMessage<R>>(&message)
+                {
                     Ok(message) => message,
                     Err(e) => {
                         tracing::warn!(error = %e, "serde_json parse error");

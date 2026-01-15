@@ -14,8 +14,9 @@ use crate::{
 };
 
 /// Boxed future that represents an asynchronous operation managed by the processor.
-pub type OperationFuture =
-    Pin<Box<dyn Future<Output = Result<Box<dyn OperationResultTransport>, Error>> + Send>>;
+pub type OperationFuture = Pin<
+    Box<dyn Future<Output = Result<Box<dyn OperationResultTransport>, Error>> + Send>,
+>;
 
 /// Describes metadata associated with an enqueued task.
 #[derive(Debug, Clone)]

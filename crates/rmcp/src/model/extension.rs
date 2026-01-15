@@ -11,7 +11,8 @@ use std::{
     hash::{BuildHasherDefault, Hasher},
 };
 
-type AnyMap = HashMap<TypeId, Box<dyn AnyClone + Send + Sync>, BuildHasherDefault<IdHasher>>;
+type AnyMap =
+    HashMap<TypeId, Box<dyn AnyClone + Send + Sync>, BuildHasherDefault<IdHasher>>;
 
 // With TypeIds as keys, there's no need to hash them. They are already hashes
 // themselves, coming from the compiler. The IdHasher just holds the u64 of
@@ -124,7 +125,10 @@ impl Extensions {
     ///
     /// assert_eq!(*ext.get::<i32>().unwrap(), 3);
     /// ```
-    pub fn get_or_insert<T: Clone + Send + Sync + 'static>(&mut self, value: T) -> &mut T {
+    pub fn get_or_insert<T: Clone + Send + Sync + 'static>(
+        &mut self,
+        value: T,
+    ) -> &mut T {
         self.get_or_insert_with(|| value)
     }
 
@@ -164,7 +168,9 @@ impl Extensions {
     ///
     /// assert_eq!(*ext.get::<i32>().unwrap(), 2);
     /// ```
-    pub fn get_or_insert_default<T: Default + Clone + Send + Sync + 'static>(&mut self) -> &mut T {
+    pub fn get_or_insert_default<T: Default + Clone + Send + Sync + 'static>(
+        &mut self,
+    ) -> &mut T {
         self.get_or_insert_with(T::default)
     }
 

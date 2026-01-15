@@ -9,7 +9,8 @@ use crate::{
     model::{ClientJsonRpcMessage, ServerJsonRpcMessage},
     transport::{
         common::http_header::{
-            EVENT_STREAM_MIME_TYPE, HEADER_LAST_EVENT_ID, HEADER_SESSION_ID, JSON_MIME_TYPE,
+            EVENT_STREAM_MIME_TYPE, HEADER_LAST_EVENT_ID, HEADER_SESSION_ID,
+            JSON_MIME_TYPE,
         },
         streamable_http_client::*,
     },
@@ -30,7 +31,8 @@ impl StreamableHttpClient for reqwest::Client {
         session_id: Arc<str>,
         last_event_id: Option<String>,
         auth_token: Option<String>,
-    ) -> Result<BoxStream<'static, Result<Sse, SseError>>, StreamableHttpError<Self::Error>> {
+    ) -> Result<BoxStream<'static, Result<Sse, SseError>>, StreamableHttpError<Self::Error>>
+    {
         let mut request_builder = self
             .get(uri.as_ref())
             .header(ACCEPT, [EVENT_STREAM_MIME_TYPE, JSON_MIME_TYPE].join(", "))
@@ -135,7 +137,8 @@ impl StreamableHttpClient for reqwest::Client {
             .map(|s| s.to_string());
         match content_type {
             Some(ct) if ct.as_bytes().starts_with(EVENT_STREAM_MIME_TYPE.as_bytes()) => {
-                let event_stream = SseStream::from_byte_stream(response.bytes_stream()).boxed();
+                let event_stream =
+                    SseStream::from_byte_stream(response.bytes_stream()).boxed();
                 Ok(StreamableHttpPostResponse::Sse(event_stream, session_id))
             }
             Some(ct) if ct.as_bytes().starts_with(JSON_MIME_TYPE.as_bytes()) => {
@@ -146,7 +149,8 @@ impl StreamableHttpClient for reqwest::Client {
                 // unexpected content type
                 tracing::error!("unexpected content type: {:?}", content_type);
                 Err(StreamableHttpError::UnexpectedContentType(
-                    content_type.map(|ct| String::from_utf8_lossy(ct.as_bytes()).to_string()),
+                    content_type
+                        .map(|ct| String::from_utf8_lossy(ct.as_bytes()).to_string()),
                 ))
             }
         }

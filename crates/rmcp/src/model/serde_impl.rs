@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    CustomNotification, CustomRequest, Extensions, Meta, Notification, NotificationNoParam,
-    Request, RequestNoParam, RequestOptionalParam,
+    CustomNotification, CustomRequest, Extensions, Meta, Notification,
+    NotificationNoParam, Request, RequestNoParam, RequestOptionalParam,
 };
 #[derive(Serialize, Deserialize)]
 struct WithMeta<'a, P> {
@@ -282,8 +282,9 @@ impl<'de> Deserialize<'de> for CustomRequest {
     where
         D: serde::Deserializer<'de>,
     {
-        let body =
-            ProxyOptionalParam::<'_, _, Option<serde_json::Value>>::deserialize(deserializer)?;
+        let body = ProxyOptionalParam::<'_, _, Option<serde_json::Value>>::deserialize(
+            deserializer,
+        )?;
         let mut params = None;
         let mut _meta = None;
         if let Some(body_params) = body.params {
@@ -335,8 +336,9 @@ impl<'de> Deserialize<'de> for CustomNotification {
     where
         D: serde::Deserializer<'de>,
     {
-        let body =
-            ProxyOptionalParam::<'_, _, Option<serde_json::Value>>::deserialize(deserializer)?;
+        let body = ProxyOptionalParam::<'_, _, Option<serde_json::Value>>::deserialize(
+            deserializer,
+        )?;
         let mut params = None;
         let mut _meta = None;
         if let Some(body_params) = body.params {

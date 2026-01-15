@@ -251,8 +251,14 @@ builder! {
     }
 }
 
-impl<const E: bool, const L: bool, const C: bool, const P: bool, const R: bool, const TASKS: bool>
-    ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, P, R, true, TASKS>>
+impl<
+    const E: bool,
+    const L: bool,
+    const C: bool,
+    const P: bool,
+    const R: bool,
+    const TASKS: bool,
+> ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, P, R, true, TASKS>>
 {
     pub fn enable_tool_list_changed(mut self) -> Self {
         if let Some(c) = self.tools.as_mut() {
@@ -262,8 +268,14 @@ impl<const E: bool, const L: bool, const C: bool, const P: bool, const R: bool, 
     }
 }
 
-impl<const E: bool, const L: bool, const C: bool, const R: bool, const T: bool, const TASKS: bool>
-    ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, true, R, T, TASKS>>
+impl<
+    const E: bool,
+    const L: bool,
+    const C: bool,
+    const R: bool,
+    const T: bool,
+    const TASKS: bool,
+> ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, true, R, T, TASKS>>
 {
     pub fn enable_prompts_list_changed(mut self) -> Self {
         if let Some(c) = self.prompts.as_mut() {
@@ -273,8 +285,14 @@ impl<const E: bool, const L: bool, const C: bool, const R: bool, const T: bool, 
     }
 }
 
-impl<const E: bool, const L: bool, const C: bool, const P: bool, const T: bool, const TASKS: bool>
-    ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, P, true, T, TASKS>>
+impl<
+    const E: bool,
+    const L: bool,
+    const C: bool,
+    const P: bool,
+    const T: bool,
+    const TASKS: bool,
+> ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, P, true, T, TASKS>>
 {
     pub fn enable_resources_list_changed(mut self) -> Self {
         if let Some(c) = self.resources.as_mut() {

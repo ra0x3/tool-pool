@@ -94,7 +94,10 @@ impl<E: std::error::Error + Send> SseStreamReconnect for NeverReconnect<E> {
     type Error = E;
     type Future = futures::future::Ready<Result<BoxedSseResponse, Self::Error>>;
     fn retry_connection(&mut self, _last_event_id: Option<&str>) -> Self::Future {
-        futures::future::ready(Err(self.error.take().expect("should not be called again")))
+        futures::future::ready(Err(self
+            .error
+            .take()
+            .expect("should not be called again")))
     }
 }
 
@@ -154,7 +157,10 @@ impl<R: SseStreamReconnect> SseAutoReconnectStream<R> {
 
 impl<E: std::error::Error + Send> SseAutoReconnectStream<NeverReconnect<E>> {
     #[allow(dead_code)]
-    pub(crate) fn never_reconnect(stream: BoxedSseResponse, error_when_reconnect: E) -> Self {
+    pub(crate) fn never_reconnect(
+        stream: BoxedSseResponse,
+        error_when_reconnect: E,
+    ) -> Self {
         Self {
             retry_policy: Arc::new(NeverRetry),
             last_event_id: None,
@@ -214,13 +220,16 @@ where
                         // Only treat blank/`message` events as JSON-RPC payloads.
                         // Other control frames (endpoint, ping, etc.) are passed to
                         // the reconnection handler.
-                        let is_message_event =
-                            matches!(sse.event.as_deref(), None | Some("") | Some("message"));
+                        let is_message_event = matches!(
+                            sse.event.as_deref(),
+                            None | Some("") | Some("message")
+                        );
                         if !is_message_event {
                             match this.connector.handle_control_event(&sse) {
                                 Ok(()) => return self.poll_next(cx),
                                 Err(e) => {
-                                    this.state.set(SseAutoReconnectStreamState::Terminated);
+                                    this.state
+                                        .set(SseAutoReconnectStreamState::Terminated);
                                     return Poll::Ready(Some(Err(e)));
                                 }
                             }
@@ -231,7 +240,8 @@ where
                                     // Downgrade to debug to avoid noisy logs when servers emit
                                     // non-JSON payloads as message frames. Include last_event_id
                                     // to aid troubleshooting while keeping default behaviour.
-                                    let last_id = this.last_event_id.as_deref().unwrap_or("");
+                                    let last_id =
+                                        this.last_event_id.as_deref().unwrap_or("");
                                     tracing::debug!(last_event_id=%last_id, "failed to deserialize server message: {e}");
                                     return self.poll_next(cx);
                                 }
@@ -266,14 +276,18 @@ where
             } => {
                 let retry_result = ready!(retrying.poll(cx));
                 match retry_result {
-                    Ok(new_stream) => SseAutoReconnectStreamState::Connected { stream: new_stream },
+                    Ok(new_stream) => {
+                        SseAutoReconnectStreamState::Connected { stream: new_stream }
+                    }
                     Err(e) => {
                         tracing::debug!("retry sse stream error: {e}");
                         *retry_times += 1;
                         if let Some(interval) = this.retry_policy.retry(*retry_times) {
                             let interval = this
                                 .server_retry_interval
-                                .map(|server_retry_interval| server_retry_interval.max(interval))
+                                .map(|server_retry_interval| {
+                                    server_retry_interval.max(interval)
+                                })
                                 .unwrap_or(interval);
                             let sleep = tokio::time::sleep(interval);
                             SseAutoReconnectStreamState::WaitingNextRetry {
@@ -281,7 +295,9 @@ where
                                 retry_times: *retry_times,
                             }
                         } else {
-                            tracing::error!("sse stream error: {e}, max retry times reached");
+                            tracing::error!(
+                                "sse stream error: {e}, max retry times reached"
+                            );
                             this.state.set(SseAutoReconnectStreamState::Terminated);
                             return Poll::Ready(Some(Err(e)));
                         }

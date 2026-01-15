@@ -4,7 +4,9 @@ use rmcp::{
     ServiceExt,
     transport::{
         stdio,
-        streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager},
+        streamable_http_server::{
+            StreamableHttpService, session::local::LocalSessionManager,
+        },
     },
 };
 
@@ -16,9 +18,9 @@ const HTTP_BIND_ADDRESS: &str = "127.0.0.1:8001";
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Get transport mode from environment variable or command line argument
-    let transport_mode = env::args()
-        .nth(1)
-        .unwrap_or_else(|| env::var("TRANSPORT_MODE").unwrap_or_else(|_| "stdio".to_string()));
+    let transport_mode = env::args().nth(1).unwrap_or_else(|| {
+        env::var("TRANSPORT_MODE").unwrap_or_else(|_| "stdio".to_string())
+    });
 
     match transport_mode.as_str() {
         "stdio" => run_stdio().await,

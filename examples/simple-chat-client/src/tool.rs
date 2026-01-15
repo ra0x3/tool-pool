@@ -6,6 +6,7 @@ use rmcp::{
     RoleClient,
     model::{CallToolRequestParams, CallToolResult, Tool as McpTool},
     service::{RunningService, ServerSink},
+    RoleClient,
 };
 use serde_json::Value;
 

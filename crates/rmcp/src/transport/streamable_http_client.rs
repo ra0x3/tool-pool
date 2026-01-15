@@ -7,7 +7,9 @@ use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use tracing::debug;
 
-use super::common::client_side_sse::{ExponentialBackoff, SseRetryPolicy, SseStreamReconnect};
+use super::common::client_side_sse::{
+    ExponentialBackoff, SseRetryPolicy, SseStreamReconnect,
+};
 use crate::{
     RoleClient,
     model::{ClientJsonRpcMessage, ServerJsonRpcMessage},
@@ -75,7 +77,9 @@ impl std::fmt::Debug for StreamableHttpPostResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Accepted => write!(f, "Accepted"),
-            Self::Json(arg0, arg1) => f.debug_tuple("Json").field(arg0).field(arg1).finish(),
+            Self::Json(arg0, arg1) => {
+                f.debug_tuple("Json").field(arg0).field(arg1).finish()
+            }
             Self::Sse(_, arg1) => f.debug_tuple("Sse").field(arg1).finish(),
         }
     }
@@ -153,8 +157,9 @@ pub trait StreamableHttpClient: Clone + Send + 'static {
         message: ClientJsonRpcMessage,
         session_id: Option<Arc<str>>,
         auth_header: Option<String>,
-    ) -> impl Future<Output = Result<StreamableHttpPostResponse, StreamableHttpError<Self::Error>>>
-    + Send
+    ) -> impl Future<
+        Output = Result<StreamableHttpPostResponse, StreamableHttpError<Self::Error>>,
+    > + Send
     + '_;
     fn delete_session(
         &self,
@@ -232,8 +237,9 @@ impl<C: StreamableHttpClient> StreamableHttpClientWorker<C> {
 
 impl<C: StreamableHttpClient> StreamableHttpClientWorker<C> {
     async fn execute_sse_stream(
-        sse_stream: impl Stream<Item = Result<ServerJsonRpcMessage, StreamableHttpError<C::Error>>>
-        + Send
+        sse_stream: impl Stream<
+            Item = Result<ServerJsonRpcMessage, StreamableHttpError<C::Error>>,
+        > + Send
         + 'static,
         sse_worker_tx: tokio::sync::mpsc::Sender<ServerJsonRpcMessage>,
         close_on_response: bool,
@@ -382,7 +388,12 @@ impl<C: StreamableHttpClient> Worker for StreamableHttpClientWorker<C> {
 
             streams.spawn(async move {
                 match client
-                    .get_stream(uri.clone(), session_id.clone(), None, auth_header.clone())
+                    .get_stream(
+                        uri.clone(),
+                        session_id.clone(),
+                        None,
+                        auth_header.clone(),
+                    )
                     .await
                 {
                     Ok(stream) => {
@@ -525,7 +536,8 @@ impl<C: StreamableHttpClient> Worker for StreamableHttpClientWorker<C> {
         // Cleanup session before returning (ensures close() waits for session deletion)
         // Use a timeout to prevent indefinite hangs if the server is unresponsive
         if let Some((client, url, session_id, auth_header)) = session_cleanup_info {
-            const SESSION_CLEANUP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+            const SESSION_CLEANUP_TIMEOUT: std::time::Duration =
+                std::time::Duration::from_secs(5);
             match tokio::time::timeout(
                 SESSION_CLEANUP_TIMEOUT,
                 client.delete_session(url, session_id.clone(), auth_header),
@@ -533,7 +545,10 @@ impl<C: StreamableHttpClient> Worker for StreamableHttpClientWorker<C> {
             .await
             {
                 Ok(Ok(_)) => {
-                    tracing::info!(session_id = session_id.as_ref(), "delete session success")
+                    tracing::info!(
+                        session_id = session_id.as_ref(),
+                        "delete session success"
+                    )
                 }
                 Ok(Err(StreamableHttpError::ServerDoesNotSupportDeleteSession)) => {
                     tracing::info!(
@@ -648,7 +663,8 @@ impl<C: StreamableHttpClient> Worker for StreamableHttpClientWorker<C> {
 ///
 /// - `transport-streamable-http-client`: Base feature providing the generic transport infrastructure
 /// - `transport-streamable-http-client-reqwest`: Includes reqwest HTTP client support with convenience methods
-pub type StreamableHttpClientTransport<C> = WorkerTransport<StreamableHttpClientWorker<C>>;
+pub type StreamableHttpClientTransport<C> =
+    WorkerTransport<StreamableHttpClientWorker<C>>;
 
 impl<C: StreamableHttpClient> StreamableHttpClientTransport<C> {
     /// Creates a new transport with a custom HTTP client implementation.

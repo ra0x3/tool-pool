@@ -5,8 +5,9 @@ use tokio::sync::RwLock;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::model::{ProgressNotificationParam, ProgressToken};
-type Dispatcher =
-    Arc<RwLock<HashMap<ProgressToken, tokio::sync::mpsc::Sender<ProgressNotificationParam>>>>;
+type Dispatcher = Arc<
+    RwLock<HashMap<ProgressToken, tokio::sync::mpsc::Sender<ProgressNotificationParam>>>,
+>;
 
 /// A dispatcher for progress notifications.
 #[derive(Debug, Clone, Default)]

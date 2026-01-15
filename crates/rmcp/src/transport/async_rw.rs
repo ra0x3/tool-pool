@@ -42,7 +42,8 @@ where
     }
 }
 
-pub type TransportWriter<Role, W> = FramedWrite<W, JsonRpcMessageCodec<TxJsonRpcMessage<Role>>>;
+pub type TransportWriter<Role, W> =
+    FramedWrite<W, JsonRpcMessageCodec<TxJsonRpcMessage<Role>>>;
 
 pub struct AsyncRwTransport<Role: ServiceRole, R: AsyncRead, W: AsyncWrite> {
     read: FramedRead<R, JsonRpcMessageCodec<RxJsonRpcMessage<Role>>>,
@@ -252,7 +253,9 @@ fn try_parse_with_compatibility<T: serde::de::DeserializeOwned>(
             Ok(item) => Ok(Some(item)),
             Err(e) => {
                 // Check if this is a notification that should be ignored for compatibility
-                if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(line_str) {
+                if let Ok(json_value) =
+                    serde_json::from_str::<serde_json::Value>(line_str)
+                {
                     if let Some(method) =
                         json_value.get("method").and_then(serde_json::Value::as_str)
                     {
@@ -369,7 +372,10 @@ impl<T: DeserializeOwned> Decoder for JsonRpcMessageCodec<T> {
         }
     }
 
-    fn decode_eof(&mut self, buf: &mut BytesMut) -> Result<Option<T>, JsonRpcMessageCodecError> {
+    fn decode_eof(
+        &mut self,
+        buf: &mut BytesMut,
+    ) -> Result<Option<T>, JsonRpcMessageCodecError> {
         Ok(match self.decode(buf)? {
             Some(frame) => Some(frame),
             None => {
@@ -396,7 +402,11 @@ impl<T: DeserializeOwned> Decoder for JsonRpcMessageCodec<T> {
 impl<T: Serialize> Encoder<T> for JsonRpcMessageCodec<T> {
     type Error = JsonRpcMessageCodecError;
 
-    fn encode(&mut self, item: T, buf: &mut BytesMut) -> Result<(), JsonRpcMessageCodecError> {
+    fn encode(
+        &mut self,
+        item: T,
+        buf: &mut BytesMut,
+    ) -> Result<(), JsonRpcMessageCodecError> {
         serde_json::to_writer(buf.writer(), &item)?;
         buf.put_u8(b'\n');
         Ok(())
@@ -408,19 +418,24 @@ mod test {
     use futures::{Sink, Stream};
 
     use super::*;
-    fn from_async_read<T: DeserializeOwned, R: AsyncRead>(reader: R) -> impl Stream<Item = T> {
-        FramedRead::new(reader, JsonRpcMessageCodec::<T>::default()).filter_map(|result| {
-            if let Err(e) = &result {
-                tracing::error!("Error reading from stream: {}", e);
-            }
-            futures::future::ready(result.ok())
-        })
+    fn from_async_read<T: DeserializeOwned, R: AsyncRead>(
+        reader: R,
+    ) -> impl Stream<Item = T> {
+        FramedRead::new(reader, JsonRpcMessageCodec::<T>::default()).filter_map(
+            |result| {
+                if let Err(e) = &result {
+                    tracing::error!("Error reading from stream: {}", e);
+                }
+                futures::future::ready(result.ok())
+            },
+        )
     }
 
     fn from_async_write<T: Serialize, W: AsyncWrite + Send>(
         writer: W,
     ) -> impl Sink<T, Error = std::io::Error> {
-        FramedWrite::new(writer, JsonRpcMessageCodec::<T>::default()).sink_map_err(Into::into)
+        FramedWrite::new(writer, JsonRpcMessageCodec::<T>::default())
+            .sink_map_err(Into::into)
     }
     #[tokio::test]
     async fn test_decode() {
@@ -527,20 +542,28 @@ mod test {
         // Test the compatibility function directly
         let stderr_message =
             r#"{"method":"notifications/stderr","params":{"content":"stderr message"}}"#;
-        let custom_message = r#"{"method":"notifications/custom","params":{"data":"custom"}}"#;
-        let standard_message =
-            r#"{"method":"notifications/message","params":{"level":"info","data":"standard"}}"#;
+        let custom_message =
+            r#"{"method":"notifications/custom","params":{"data":"custom"}}"#;
+        let standard_message = r#"{"method":"notifications/message","params":{"level":"info","data":"standard"}}"#;
         let progress_message = r#"{"method":"notifications/progress","params":{"progressToken":"token","progress":50}}"#;
 
         // Test with valid JSON - all should parse successfully
-        let result1 =
-            try_parse_with_compatibility::<serde_json::Value>(stderr_message.as_bytes(), "test");
-        let result2 =
-            try_parse_with_compatibility::<serde_json::Value>(custom_message.as_bytes(), "test");
-        let result3 =
-            try_parse_with_compatibility::<serde_json::Value>(standard_message.as_bytes(), "test");
-        let result4 =
-            try_parse_with_compatibility::<serde_json::Value>(progress_message.as_bytes(), "test");
+        let result1 = try_parse_with_compatibility::<serde_json::Value>(
+            stderr_message.as_bytes(),
+            "test",
+        );
+        let result2 = try_parse_with_compatibility::<serde_json::Value>(
+            custom_message.as_bytes(),
+            "test",
+        );
+        let result3 = try_parse_with_compatibility::<serde_json::Value>(
+            standard_message.as_bytes(),
+            "test",
+        );
+        let result4 = try_parse_with_compatibility::<serde_json::Value>(
+            progress_message.as_bytes(),
+            "test",
+        );
 
         // All should parse successfully since they're valid JSON
         assert!(result1.is_ok());
@@ -552,6 +575,8 @@ mod test {
         assert!(result3.unwrap().is_some());
         assert!(result4.unwrap().is_some());
 
-        println!("Standard notifications are preserved, non-standard are handled gracefully");
+        println!(
+            "Standard notifications are preserved, non-standard are handled gracefully"
+        );
     }
 }

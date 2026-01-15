@@ -199,7 +199,10 @@ impl PromptMessage {
     }
 
     /// Create a new resource link message
-    pub fn new_resource_link(role: PromptMessageRole, resource: super::resource::Resource) -> Self {
+    pub fn new_resource_link(
+        role: PromptMessageRole,
+        resource: super::resource::Resource,
+    ) -> Self {
         Self {
             role,
             content: PromptMessageContent::ResourceLink { link: resource },
@@ -234,8 +237,10 @@ mod tests {
         use super::super::resource::RawResource;
 
         let resource = RawResource::new("file:///test.txt", "test.txt");
-        let message =
-            PromptMessage::new_resource_link(PromptMessageRole::User, resource.no_annotation());
+        let message = PromptMessage::new_resource_link(
+            PromptMessageRole::User,
+            resource.no_annotation(),
+        );
 
         let json = serde_json::to_string(&message).unwrap();
         println!("PromptMessage with ResourceLink JSON: {}", json);

@@ -17,9 +17,10 @@ use tracing::instrument;
 use crate::{
     RoleServer,
     model::{
-        CancelledNotificationParam, ClientJsonRpcMessage, ClientNotification, ClientRequest,
-        JsonRpcNotification, JsonRpcRequest, Notification, ProgressNotificationParam,
-        ProgressToken, RequestId, ServerJsonRpcMessage, ServerNotification,
+        CancelledNotificationParam, ClientJsonRpcMessage, ClientNotification,
+        ClientRequest, JsonRpcNotification, JsonRpcRequest, Notification,
+        ProgressNotificationParam, ProgressToken, RequestId, ServerJsonRpcMessage,
+        ServerNotification,
     },
     transport::{
         WorkerTransport,
@@ -48,7 +49,8 @@ impl SessionManager for LocalSessionManager {
     type Transport = WorkerTransport<LocalSessionWorker>;
     async fn create_session(&self) -> Result<(SessionId, Self::Transport), Self::Error> {
         let id = session_id();
-        let (handle, worker) = create_local_session(id.clone(), self.session_config.clone());
+        let (handle, worker) =
+            create_local_session(id.clone(), self.session_config.clone());
         self.sessions.write().await.insert(id.clone(), handle);
         Ok((id, WorkerTransport::spawn(worker)))
     }
@@ -163,8 +165,10 @@ impl std::str::FromStr for EventId {
     type Err = EventIdParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((index, request_id)) = s.split_once("/") {
-            let index = usize::from_str(index).map_err(EventIdParseError::InvalidIndex)?;
-            let request_id = u64::from_str(request_id).map_err(EventIdParseError::InvalidIndex)?;
+            let index =
+                usize::from_str(index).map_err(EventIdParseError::InvalidIndex)?;
+            let request_id =
+                u64::from_str(request_id).map_err(EventIdParseError::InvalidIndex)?;
             Ok(EventId {
                 http_request_id: Some(request_id),
                 index,
@@ -267,7 +271,8 @@ impl CachedTx {
         for message in self.cache.iter().skip(sync_index) {
             let send_result = self.tx.send(message.clone()).await;
             if send_result.is_err() {
-                let event_id: EventId = message.event_id.as_deref().unwrap_or_default().parse()?;
+                let event_id: EventId =
+                    message.event_id.as_deref().unwrap_or_default().parse()?;
                 return Err(SessionError::ChannelClosed(Some(event_id.index as u64)));
             }
         }
@@ -345,7 +350,8 @@ impl LocalSessionWorker {
             if let Some(channel) = self.tx_router.get_mut(&http_request_id) {
                 // It's okey to do so, since we don't handle batch json rpc request anymore
                 // and this can be refactored after the batch request is removed in the coming version.
-                if channel.resources.is_empty() || matches!(resource, ResourceKey::McpRequestId(_))
+                if channel.resources.is_empty()
+                    || matches!(resource, ResourceKey::McpRequestId(_))
                 {
                     tracing::debug!(http_request_id, "close http request wise channel");
                     if let Some(channel) = self.tx_router.remove(&http_request_id) {
@@ -359,7 +365,11 @@ impl LocalSessionWorker {
             }
         }
     }
-    fn register_resource(&mut self, resource: ResourceKey, http_request_id: HttpRequestId) {
+    fn register_resource(
+        &mut self,
+        resource: ResourceKey,
+        http_request_id: HttpRequestId,
+    ) {
         tracing::trace!(?resource, http_request_id, "register resource");
         if let Some(channel) = self.tx_router.get_mut(&http_request_id) {
             channel.resources.insert(resource.clone());
@@ -416,7 +426,10 @@ impl LocalSessionWorker {
             inner: rx,
         })
     }
-    fn resolve_outbound_channel(&self, message: &ServerJsonRpcMessage) -> OutboundChannel {
+    fn resolve_outbound_channel(
+        &self,
+        message: &ServerJsonRpcMessage,
+    ) -> OutboundChannel {
         match &message {
             ServerJsonRpcMessage::Request(_) => OutboundChannel::Common,
             ServerJsonRpcMessage::Notification(JsonRpcNotification {
@@ -519,7 +532,8 @@ impl LocalSessionWorker {
                     .tx_router
                     .get_mut(&http_request_id)
                     .ok_or(SessionError::ChannelClosed(Some(http_request_id)))?;
-                let channel = tokio::sync::mpsc::channel(self.session_config.channel_capacity);
+                let channel =
+                    tokio::sync::mpsc::channel(self.session_config.channel_capacity);
                 let (tx, rx) = channel;
                 request_wise.tx.tx = tx;
                 let index = last_event_id.index;
@@ -531,7 +545,8 @@ impl LocalSessionWorker {
                 })
             }
             None => {
-                let channel = tokio::sync::mpsc::channel(self.session_config.channel_capacity);
+                let channel =
+                    tokio::sync::mpsc::channel(self.session_config.channel_capacity);
                 let (tx, rx) = channel;
                 self.common.tx = tx;
                 let index = last_event_id.index;
@@ -584,7 +599,9 @@ impl LocalSessionWorker {
                 let (tx, _rx) = tokio::sync::mpsc::channel(1);
                 self.common.tx = tx;
 
-                tracing::debug!("closed standalone SSE stream for server-initiated disconnection");
+                tracing::debug!(
+                    "closed standalone SSE stream for server-initiated disconnection"
+                );
                 Ok(())
             }
         }
@@ -928,7 +945,10 @@ impl Worker for LocalSessionWorker {
                         .await
                         .map_err(LocalSessionWorkerError::FailToHandleMessage);
                     let _ = responder.send(handle_result).inspect_err(|error| {
-                        tracing::warn!(?error, "failed to send message to http service handler");
+                        tracing::warn!(
+                            ?error,
+                            "failed to send message to http service handler"
+                        );
                     });
                     if let Some(to_unregister) = to_unregister {
                         self.unregister_resource(&to_unregister);
@@ -951,9 +971,9 @@ impl Worker for LocalSessionWorker {
                     }
                     context.send_to_handler(json_rpc_message).await?;
                 }
-                InnerEvent::FromHttpService(SessionEvent::EstablishRequestWiseChannel {
-                    responder,
-                }) => {
+                InnerEvent::FromHttpService(
+                    SessionEvent::EstablishRequestWiseChannel { responder },
+                ) => {
                     let handle_result = self.establish_request_wise_channel().await;
                     let _ = responder.send(handle_result);
                 }

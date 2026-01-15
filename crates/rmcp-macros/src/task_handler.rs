@@ -12,7 +12,8 @@ struct TaskHandlerAttribute {
 impl Default for TaskHandlerAttribute {
     fn default() -> Self {
         Self {
-            processor: syn::parse2(quote! { self.processor }).expect("default processor expr"),
+            processor: syn::parse2(quote! { self.processor })
+                .expect("default processor expr"),
         }
     }
 }

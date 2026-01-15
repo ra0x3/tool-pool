@@ -1,4 +1,5 @@
 // cargo test --test test_handler_wrappers --features "client server"
+#![cfg(all(feature = "client", feature = "server"))]
 
 mod common;
 
