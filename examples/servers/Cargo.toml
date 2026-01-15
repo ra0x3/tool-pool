@@ -5,6 +5,15 @@ edition = "2024"
 publish = false
 
 [dependencies]
+anyhow = "1.0"
+askama = { version = "0.15" }
+axum = { version = "0.8", features = ["macros"] }
+chrono = "0.4"
+futures = "0.3"
+hyper = { version = "1" }
+hyper-util = { version = "0", features = ["server"] }
+rand = { version = "0.9", features = ["std"] }
+reqwest = { version = "0.12", features = ["json"] }
 rmcp = { workspace = true, features = [
     "server",
     "macros",
@@ -15,6 +24,10 @@ rmcp = { workspace = true, features = [
     "elicitation",
     "schemars",
 ] }
+schemars = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_urlencoded = "0.7"
 tokio = { version = "1", features = [
     "macros",
     "rt",
@@ -22,29 +35,16 @@ tokio = { version = "1", features = [
     "io-std",
     "signal",
 ] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-anyhow = "1.0"
+tokio-util = { version = "0.7" }
+tower-http = { version = "0.6", features = ["cors"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "std",
     "fmt",
 ] }
-futures = "0.3"
-rand = { version = "0.9", features = ["std"] }
-axum = { version = "0.8", features = ["macros"] }
-schemars = "1.0"
-reqwest = { version = "0.12", features = ["json"] }
-chrono = "0.4"
-uuid = { version = "1.6", features = ["v4", "serde"] }
-serde_urlencoded = "0.7"
-askama = { version = "0.15" }
-tower-http = { version = "0.6", features = ["cors"] }
-hyper = { version = "1" }
-hyper-util = { version = "0", features = ["server"] }
-tokio-util = { version = "0.7" }
 url = "2.5"
+uuid = { version = "1.6", features = ["v4", "serde"] }
 
 [dev-dependencies]
 tokio-stream = { version = "0.1" }

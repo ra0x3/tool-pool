@@ -8,8 +8,10 @@ use futures::future::{BoxFuture, FutureExt};
 use serde::de::DeserializeOwned;
 
 use super::common::{AsRequestContext, FromContextPart};
+#[cfg(feature = "schemars")]
+pub use super::common::{schema_for_output, schema_for_type};
 pub use super::{
-    common::{Extension, RequestId, schema_for_output, schema_for_type},
+    common::{Extension, RequestId},
     router::tool::{ToolRoute, ToolRouter},
 };
 use crate::{

@@ -16,7 +16,17 @@ publish = false
 all-features = true
 
 [dependencies]
+anyhow = "1.0"
+futures = "0.3"
+hyper = { version = "1", features = ["client", "server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+pin-project-lite = "0.2"
+rand = { version = "0.9" }
+reqwest = { version = "0.12" }
 rmcp = { workspace = true, features = ["server", "client"] }
+schemars = { version = "1.0", optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 tokio = { version = "1", features = [
     "macros",
     "rt",
@@ -26,28 +36,17 @@ tokio = { version = "1", features = [
     "fs",
     "time",
 ] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-anyhow = "1.0"
+tokio-tungstenite = "0.28.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "std",
     "fmt",
 ] }
-futures = "0.3"
-rand = { version = "0.9" }
-schemars = { version = "1.0", optional = true }
-hyper = { version = "1", features = ["client", "server", "http1"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
-tokio-tungstenite = "0.28.0"
-reqwest = { version = "0.12" }
-pin-project-lite = "0.2"
 
 [[example]]
 name = "tcp"
 path = "src/tcp.rs"
-
 
 [[example]]
 name = "http_upgrade"

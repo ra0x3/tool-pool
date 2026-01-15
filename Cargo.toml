@@ -16,8 +16,5 @@ repository = "https://github.com/modelcontextprotocol/rust-sdk/"
 description = "Rust SDK for Model Context Protocol"
 keywords = ["mcp", "sdk", "tokio", "modelcontextprotocol"]
 homepage = "https://github.com/modelcontextprotocol/rust-sdk"
-categories = [
-    "network-programming",
-    "asynchronous",
-]
+categories = ["network-programming", "asynchronous"]
 readme = "README.md"

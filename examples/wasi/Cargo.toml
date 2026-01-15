@@ -16,13 +16,14 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-wasi = { version = "0.14.2"}
+rmcp = { workspace = true, features = ["server", "macros", "schemars"] }
+schemars = "1.0"
+serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["rt", "io-util", "sync", "macros", "time"] }
-rmcp = { workspace = true, features = ["server", "macros"] }
-serde = { version  = "1", features = ["derive"]}
+tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "std",
     "fmt",
 ] }
-tracing = "0.1"
+wasi = { version = "0.14.2" }
