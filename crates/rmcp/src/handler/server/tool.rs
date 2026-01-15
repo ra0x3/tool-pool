@@ -8,8 +8,10 @@ use futures::future::{BoxFuture, FutureExt};
 use serde::de::DeserializeOwned;
 
 use super::common::{AsRequestContext, FromContextPart};
+#[cfg(feature = "schemars")]
+pub use super::common::{schema_for_output, schema_for_type};
 pub use super::{
-    common::{Extension, RequestId, schema_for_output, schema_for_type},
+    common::{Extension, RequestId},
     router::tool::{ToolRoute, ToolRouter},
 };
 use crate::{
@@ -331,3 +333,405 @@ macro_rules! impl_for {
     };
 }
 impl_for!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15);
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+    use serde_json::json;
+    use tokio_util::sync::CancellationToken;
+
+    use super::*;
+    use crate::model::NumberOrString;
+
+    #[derive(Debug, Clone)]
+    struct TestService {
+        #[allow(dead_code)]
+        value: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct TestParams {
+        message: String,
+        count: i32,
+    }
+
+    #[tokio::test]
+    async fn test_parse_json_object_valid() {
+        let mut json = JsonObject::new();
+        json.insert("message".to_string(), json!("hello"));
+        json.insert("count".to_string(), json!(42));
+
+        let result: Result<TestParams, _> = parse_json_object(json);
+        assert!(result.is_ok());
+        let params = result.unwrap();
+        assert_eq!(params.message, "hello");
+        assert_eq!(params.count, 42);
+    }
+
+    #[tokio::test]
+    async fn test_parse_json_object_invalid() {
+        let mut json = JsonObject::new();
+        json.insert("message".to_string(), json!("hello"));
+        // Missing required field 'count'
+
+        let result: Result<TestParams, _> = parse_json_object(json);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.message.contains("failed to deserialize"));
+    }
+
+    #[tokio::test]
+    async fn test_parse_json_object_type_mismatch() {
+        let mut json = JsonObject::new();
+        json.insert("message".to_string(), json!("hello"));
+        json.insert("count".to_string(), json!("not a number")); // Wrong type
+
+        let result: Result<TestParams, _> = parse_json_object(json);
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_into_call_tool_result_string() {
+        let result = "success".to_string().into_call_tool_result();
+        assert!(result.is_ok());
+        let tool_result = result.unwrap();
+        assert_eq!(tool_result.is_error, Some(false));
+        assert_eq!(tool_result.content.len(), 1);
+        if let Some(text) = tool_result.content[0].as_text() {
+            assert_eq!(text.text, "success");
+        } else {
+            panic!("Expected text content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_into_call_tool_result_ok_variant() {
+        let result: Result<String, String> = Ok("success".to_string());
+        let tool_result = result.into_call_tool_result().unwrap();
+        assert_eq!(tool_result.is_error, Some(false));
+        assert_eq!(tool_result.content.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_into_call_tool_result_err_variant() {
+        let result: Result<String, String> = Err("error".to_string());
+        let tool_result = result.into_call_tool_result().unwrap();
+        assert_eq!(tool_result.is_error, Some(true));
+        assert_eq!(tool_result.content.len(), 1);
+        if let Some(text) = tool_result.content[0].as_text() {
+            assert_eq!(text.text, "error");
+        } else {
+            panic!("Expected text content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_into_call_tool_result_error_data() {
+        let error = crate::ErrorData::invalid_params("bad params".to_string(), None);
+        let result: Result<String, crate::ErrorData> = Err(error);
+        let tool_result = result.into_call_tool_result();
+        assert!(tool_result.is_err());
+        assert!(tool_result.unwrap_err().message.contains("bad params"));
+    }
+
+    #[tokio::test]
+    async fn test_tool_name_extraction() {
+        let service = TestService {
+            value: "test".to_string(),
+        };
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let mut context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "test_tool".into(),
+                arguments: None,
+                task: None,
+            },
+            request_context,
+        );
+
+        let tool_name = ToolName::from_context_part(&mut context).unwrap();
+        assert_eq!(tool_name.0, "test_tool");
+    }
+
+    #[tokio::test]
+    async fn test_parameters_extraction() {
+        let service = TestService {
+            value: "test".to_string(),
+        };
+        let mut args = JsonObject::new();
+        args.insert("message".to_string(), json!("hello"));
+        args.insert("count".to_string(), json!(42));
+
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let mut context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "test_tool".into(),
+                arguments: Some(args),
+                task: None,
+            },
+            request_context,
+        );
+
+        let params: Parameters<TestParams> = Parameters::from_context_part(&mut context).unwrap();
+        assert_eq!(params.0.message, "hello");
+        assert_eq!(params.0.count, 42);
+        // Arguments should be consumed
+        assert!(context.arguments.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_parameters_extraction_empty() {
+        let service = TestService {
+            value: "test".to_string(),
+        };
+
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let mut context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "test_tool".into(),
+                arguments: None,
+                task: None,
+            },
+            request_context,
+        );
+
+        // Should use empty object when no arguments
+        let json_obj: JsonObject = JsonObject::from_context_part(&mut context).unwrap();
+        assert!(json_obj.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_async_handler_success() {
+        async fn async_tool(params: Parameters<TestParams>) -> String {
+            format!("{} x {}", params.0.message, params.0.count)
+        }
+
+        let service = TestService {
+            value: "test".to_string(),
+        };
+        let mut args = JsonObject::new();
+        args.insert("message".to_string(), json!("hello"));
+        args.insert("count".to_string(), json!(3));
+
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "async_tool".into(),
+                arguments: Some(args),
+                task: None,
+            },
+            request_context,
+        );
+
+        let result = context.invoke(async_tool).await;
+        assert!(result.is_ok());
+        let tool_result = result.unwrap();
+        assert_eq!(tool_result.is_error, Some(false));
+        if let Some(text) = tool_result.content[0].as_text() {
+            assert_eq!(text.text, "hello x 3");
+        } else {
+            panic!("Expected text content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sync_handler_success() {
+        fn sync_tool(params: Parameters<TestParams>) -> String {
+            format!("{} x {}", params.0.message, params.0.count)
+        }
+
+        let service = TestService {
+            value: "test".to_string(),
+        };
+        let mut args = JsonObject::new();
+        args.insert("message".to_string(), json!("test"));
+        args.insert("count".to_string(), json!(5));
+
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "sync_tool".into(),
+                arguments: Some(args),
+                task: None,
+            },
+            request_context,
+        );
+
+        let result = context.invoke(sync_tool).await;
+        assert!(result.is_ok());
+        let tool_result = result.unwrap();
+        assert_eq!(tool_result.is_error, Some(false));
+        if let Some(text) = tool_result.content[0].as_text() {
+            assert_eq!(text.text, "test x 5");
+        } else {
+            panic!("Expected text content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handler_with_result_error() {
+        async fn failing_tool(_params: Parameters<TestParams>) -> Result<String, String> {
+            Err("Tool execution failed".to_string())
+        }
+
+        let service = TestService {
+            value: "test".to_string(),
+        };
+        let mut args = JsonObject::new();
+        args.insert("message".to_string(), json!("test"));
+        args.insert("count".to_string(), json!(1));
+
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "failing_tool".into(),
+                arguments: Some(args),
+                task: None,
+            },
+            request_context,
+        );
+
+        let result = context.invoke(failing_tool).await;
+        assert!(result.is_ok());
+        let tool_result = result.unwrap();
+        assert_eq!(tool_result.is_error, Some(true));
+        if let Some(text) = tool_result.content[0].as_text() {
+            assert_eq!(text.text, "Tool execution failed");
+        } else {
+            panic!("Expected text content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_handler_with_json_string_output() {
+        async fn json_tool(params: Parameters<TestParams>) -> String {
+            let result = json!({
+                "message": params.0.message,
+                "count": params.0.count,
+                "computed": params.0.count * 2
+            });
+            result.to_string()
+        }
+
+        let service = TestService {
+            value: "test".to_string(),
+        };
+        let mut args = JsonObject::new();
+        args.insert("message".to_string(), json!("hello"));
+        args.insert("count".to_string(), json!(10));
+
+        let request_context = RequestContext {
+            peer: crate::service::Peer::new(
+                std::sync::Arc::new(crate::service::AtomicU32RequestIdProvider::default()),
+                None,
+            )
+            .0,
+            ct: CancellationToken::new(),
+            id: NumberOrString::Number(1),
+            meta: Default::default(),
+            extensions: Default::default(),
+        };
+
+        let context = ToolCallContext::new(
+            &service,
+            CallToolRequestParams {
+                meta: None,
+                name: "json_tool".into(),
+                arguments: Some(args),
+                task: None,
+            },
+            request_context,
+        );
+
+        let result = context.invoke(json_tool).await;
+        assert!(result.is_ok());
+        let tool_result = result.unwrap();
+        assert_eq!(tool_result.is_error, Some(false));
+        if let Some(text) = tool_result.content[0].as_text() {
+            let parsed: serde_json::Value = serde_json::from_str(&text.text).unwrap();
+            assert_eq!(parsed["message"], "hello");
+            assert_eq!(parsed["count"], 10);
+            assert_eq!(parsed["computed"], 20);
+        } else {
+            panic!("Expected text content");
+        }
+    }
+}

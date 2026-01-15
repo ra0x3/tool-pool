@@ -1,3 +1,4 @@
+#![cfg(feature = "schemars")]
 //cargo test --test test_prompt_macro_annotations --features "client server"
 #![allow(dead_code)]
 

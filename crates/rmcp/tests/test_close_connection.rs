@@ -1,4 +1,5 @@
 //cargo test --test test_close_connection --features "client server"
+#![cfg(all(feature = "client", feature = "server"))]
 
 mod common;
 use std::time::Duration;

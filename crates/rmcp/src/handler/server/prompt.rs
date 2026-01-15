@@ -323,6 +323,7 @@ impl_prompt_handler_for!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15);
 /// Extract prompt arguments from a type's JSON schema
 /// This function analyzes the schema of a type and extracts the properties
 /// as PromptArgument entries with name, description, and required status
+#[cfg(feature = "schemars")]
 pub fn cached_arguments_from_schema<T: schemars::JsonSchema + std::any::Any>()
 -> Option<Vec<crate::model::PromptArgument>> {
     let schema = super::common::schema_for_type::<T>();

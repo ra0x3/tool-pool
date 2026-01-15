@@ -1,3 +1,4 @@
+#![cfg(all(feature = "server", feature = "macros"))]
 //cargo test --test test_prompt_handler --features "client server"
 // Tests for verifying that the #[prompt_handler] macro correctly generates
 // the ServerHandler trait implementation methods.

@@ -1,5 +1,8 @@
-use std::{collections::BTreeMap, marker::PhantomData};
+use std::collections::BTreeMap;
+#[cfg(feature = "macros")]
+use std::marker::PhantomData;
 
+#[cfg(feature = "macros")]
 use pastey::paste;
 use serde::{Deserialize, Serialize};
 
@@ -231,6 +234,7 @@ pub struct ServerCapabilities {
     pub tasks: Option<TasksCapability>,
 }
 
+#[cfg(feature = "macros")]
 macro_rules! builder {
     ($Target: ident {$($f: ident: $T: ty),* $(,)?}) => {
         paste! {
@@ -249,14 +253,16 @@ macro_rules! builder {
                     <[<$Target Builder>]>::default()
                 }
             }
-            impl<S> [<$Target Builder>]<S> {
+            #[cfg(feature = "macros")]
+impl<S> [<$Target Builder>]<S> {
                 pub fn build(self) -> $Target {
                     $Target {
                         $( $f: self.$f, )*
                     }
                 }
             }
-            impl<S> From<[<$Target Builder>]<S>> for $Target {
+            #[cfg(feature = "macros")]
+impl<S> From<[<$Target Builder>]<S>> for $Target {
                 fn from(builder: [<$Target Builder>]<S>) -> Self {
                     builder.build()
                 }
@@ -277,7 +283,8 @@ macro_rules! builder {
     };
     ($Target: ident @impl_toggle [$($ff: ident: $Tf: ty,)*][$fn: ident: $TN: ty][$($ft: ident: $Tt: ty,)*]) => {
         paste! {
-            impl<
+            #[cfg(feature = "macros")]
+impl<
                 $(const [<$ff:upper>]: bool,)*
                 $(const [<$ft:upper>]: bool,)*
             > [<$Target Builder>]<[<$Target BuilderState>]<
@@ -336,6 +343,7 @@ macro_rules! builder {
     }
 }
 
+#[cfg(feature = "macros")]
 builder! {
     ServerCapabilities {
         experimental: ExperimentalCapabilities,
@@ -348,6 +356,7 @@ builder! {
     }
 }
 
+#[cfg(feature = "macros")]
 impl<const E: bool, const L: bool, const C: bool, const P: bool, const R: bool, const TASKS: bool>
     ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, P, R, true, TASKS>>
 {
@@ -359,6 +368,7 @@ impl<const E: bool, const L: bool, const C: bool, const P: bool, const R: bool, 
     }
 }
 
+#[cfg(feature = "macros")]
 impl<const E: bool, const L: bool, const C: bool, const R: bool, const T: bool, const TASKS: bool>
     ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, true, R, T, TASKS>>
 {
@@ -370,6 +380,7 @@ impl<const E: bool, const L: bool, const C: bool, const R: bool, const T: bool, 
     }
 }
 
+#[cfg(feature = "macros")]
 impl<const E: bool, const L: bool, const C: bool, const P: bool, const T: bool, const TASKS: bool>
     ServerCapabilitiesBuilder<ServerCapabilitiesBuilderState<E, L, C, P, true, T, TASKS>>
 {
@@ -388,6 +399,7 @@ impl<const E: bool, const L: bool, const C: bool, const P: bool, const T: bool, 
     }
 }
 
+#[cfg(feature = "macros")]
 builder! {
     ClientCapabilities{
         experimental: ExperimentalCapabilities,
@@ -398,6 +410,7 @@ builder! {
     }
 }
 
+#[cfg(feature = "macros")]
 impl<const E: bool, const S: bool, const EL: bool, const TASKS: bool>
     ClientCapabilitiesBuilder<ClientCapabilitiesBuilderState<E, true, S, EL, TASKS>>
 {
@@ -410,6 +423,7 @@ impl<const E: bool, const S: bool, const EL: bool, const TASKS: bool>
 }
 
 #[cfg(feature = "elicitation")]
+#[cfg(feature = "macros")]
 impl<const E: bool, const R: bool, const S: bool, const TASKS: bool>
     ClientCapabilitiesBuilder<ClientCapabilitiesBuilderState<E, R, S, true, TASKS>>
 {
@@ -424,7 +438,7 @@ impl<const E: bool, const R: bool, const S: bool, const TASKS: bool>
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "macros"))]
 mod test {
     use super::*;
     #[test]

@@ -1,4 +1,6 @@
 // cargo test --features "server client" --package rmcp test_logging
+#![cfg(all(feature = "server", feature = "client"))]
+
 mod common;
 
 use std::sync::{Arc, Mutex};
@@ -13,7 +15,7 @@ use tokio::sync::Notify;
 
 #[tokio::test]
 async fn test_logging_spec_compliance() -> anyhow::Result<()> {
-    let (server_transport, client_transport) = tokio::io::duplex(4096);
+    let (server_transport, client_transport) = tokio::io::duplex(65536);
     let receive_signal = Arc::new(Notify::new());
     let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
@@ -38,7 +40,10 @@ async fn test_logging_spec_compliance() -> anyhow::Result<()> {
         anyhow::Ok(())
     });
 
-    let client = TestClientHandler::with_notification(
+    // Give server task time to start listening
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    let mut client = TestClientHandler::with_notification(
         true,
         true,
         receive_signal.clone(),
@@ -48,7 +53,9 @@ async fn test_logging_spec_compliance() -> anyhow::Result<()> {
     .await?;
 
     // Wait for the initial server message
-    receive_signal.notified().await;
+    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+        .await
+        .expect("Timeout waiting for initial server message");
     {
         let mut messages = received_messages.lock().unwrap();
         assert_eq!(messages.len(), 1, "Should receive server-initiated message");
@@ -61,15 +68,29 @@ async fn test_logging_spec_compliance() -> anyhow::Result<()> {
         LoggingLevel::Warning,
         LoggingLevel::Debug,
     ] {
+        // Clear any previous messages first
+        {
+            received_messages.lock().unwrap().clear();
+        }
+
         client
             .peer()
             .set_level(SetLevelRequestParams { meta: None, level })
             .await?;
 
-        // Wait for each message response
-        receive_signal.notified().await;
+        // Wait for the message with timeout
+        tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+            .await
+            .unwrap_or_else(|_| {
+                panic!("Timeout waiting for logging message for level {:?}", level)
+            });
 
-        let mut messages = received_messages.lock().unwrap();
+        let messages = received_messages.lock().unwrap();
+        assert!(
+            !messages.is_empty(),
+            "Should have received a message for level {:?}",
+            level
+        );
         let msg = messages.last().unwrap();
 
         // Verify required fields
@@ -84,12 +105,10 @@ async fn test_logging_spec_compliance() -> anyhow::Result<()> {
         // Verify timestamp
         let timestamp = data["timestamp"].as_str().unwrap();
         chrono::DateTime::parse_from_rfc3339(timestamp).expect("RFC3339 timestamp");
-
-        messages.clear();
     }
 
     // Important: Cancel the client before ending the test
-    client.cancel().await?;
+    client.close().await?;
 
     // Wait for server to complete
     server_handle.await??;
@@ -99,7 +118,7 @@ async fn test_logging_spec_compliance() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_logging_user_scenarios() -> anyhow::Result<()> {
-    let (server_transport, client_transport) = tokio::io::duplex(4096);
+    let (server_transport, client_transport) = tokio::io::duplex(65536);
     let receive_signal = Arc::new(Notify::new());
     let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
@@ -109,7 +128,7 @@ async fn test_logging_user_scenarios() -> anyhow::Result<()> {
         anyhow::Ok(())
     });
 
-    let client = TestClientHandler::with_notification(
+    let mut client = TestClientHandler::with_notification(
         true,
         true,
         receive_signal.clone(),
@@ -126,7 +145,9 @@ async fn test_logging_user_scenarios() -> anyhow::Result<()> {
             level: LoggingLevel::Error,
         })
         .await?;
-    receive_signal.notified().await; // Wait for response
+    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+        .await
+        .expect("Timeout waiting for error log"); // Wait for response
     {
         let messages = received_messages.lock().unwrap();
         let msg = &messages[0];
@@ -153,7 +174,9 @@ async fn test_logging_user_scenarios() -> anyhow::Result<()> {
             level: LoggingLevel::Debug,
         })
         .await?;
-    receive_signal.notified().await; // Wait for response
+    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+        .await
+        .expect("Timeout waiting for debug log"); // Wait for response
     {
         let messages = received_messages.lock().unwrap();
         let msg = messages.last().unwrap();
@@ -177,7 +200,9 @@ async fn test_logging_user_scenarios() -> anyhow::Result<()> {
             level: LoggingLevel::Info,
         })
         .await?;
-    receive_signal.notified().await; // Wait for response
+    tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+        .await
+        .expect("Timeout waiting for info log"); // Wait for response
     {
         let messages = received_messages.lock().unwrap();
         let msg = messages.last().unwrap();
@@ -187,7 +212,7 @@ async fn test_logging_user_scenarios() -> anyhow::Result<()> {
     }
 
     // Important: Cancel client and wait for server before ending
-    client.cancel().await?;
+    client.close().await?;
     server_handle.await??;
 
     Ok(())
@@ -232,7 +257,7 @@ fn test_logging_level_serialization() {
 
 #[tokio::test]
 async fn test_logging_edge_cases() -> anyhow::Result<()> {
-    let (server_transport, client_transport) = tokio::io::duplex(4096);
+    let (server_transport, client_transport) = tokio::io::duplex(65536);
     let receive_signal = Arc::new(Notify::new());
     let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
@@ -242,7 +267,7 @@ async fn test_logging_edge_cases() -> anyhow::Result<()> {
         anyhow::Ok(())
     });
 
-    let client = TestClientHandler::with_notification(
+    let mut client = TestClientHandler::with_notification(
         true,
         true,
         receive_signal.clone(),
@@ -261,21 +286,24 @@ async fn test_logging_edge_cases() -> anyhow::Result<()> {
             .peer()
             .set_level(SetLevelRequestParams { meta: None, level })
             .await?;
-        receive_signal.notified().await;
+        tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+            .await
+            .expect("Timeout waiting for log notification");
 
-        let messages = received_messages.lock().unwrap();
+        let mut messages = received_messages.lock().unwrap();
         let msg = messages.last().unwrap();
         assert_eq!(msg.level, level);
+        messages.clear(); // Clear after each iteration to avoid confusion
     }
 
-    client.cancel().await?;
+    client.close().await?;
     server_handle.await??;
     Ok(())
 }
 
 #[tokio::test]
 async fn test_logging_optional_fields() -> anyhow::Result<()> {
-    let (server_transport, client_transport) = tokio::io::duplex(4096);
+    let (server_transport, client_transport) = tokio::io::duplex(65536);
     let receive_signal = Arc::new(Notify::new());
     let received_messages = Arc::new(Mutex::new(Vec::<LoggingMessageNotificationParam>::new()));
 
@@ -298,7 +326,7 @@ async fn test_logging_optional_fields() -> anyhow::Result<()> {
         anyhow::Ok(())
     });
 
-    let client = TestClientHandler::with_notification(
+    let mut client = TestClientHandler::with_notification(
         true,
         true,
         receive_signal.clone(),
@@ -307,8 +335,12 @@ async fn test_logging_optional_fields() -> anyhow::Result<()> {
     .serve(client_transport)
     .await?;
 
-    // Wait for the initial server message
-    receive_signal.notified().await;
+    // Wait for both initial server messages
+    for _ in 0..2 {
+        tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+            .await
+            .expect("Timeout waiting for server message");
+    }
     {
         let mut messages = received_messages.lock().unwrap();
         assert_eq!(messages.len(), 2, "Should receive two messages");
@@ -323,7 +355,9 @@ async fn test_logging_optional_fields() -> anyhow::Result<()> {
             .await?;
 
         // Wait for each message response
-        receive_signal.notified().await;
+        tokio::time::timeout(std::time::Duration::from_secs(5), receive_signal.notified())
+            .await
+            .expect("Timeout waiting for log message");
 
         let mut messages = received_messages.lock().unwrap();
         let msg = messages.last().unwrap();
@@ -345,7 +379,7 @@ async fn test_logging_optional_fields() -> anyhow::Result<()> {
     }
 
     // Important: Cancel the client before ending the test
-    client.cancel().await?;
+    client.close().await?;
 
     // Wait for server to complete
     server_handle.await??;

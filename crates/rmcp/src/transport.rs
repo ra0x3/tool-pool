@@ -70,8 +70,11 @@
 //! }
 //! ```
 
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
+#[cfg(any(feature = "client", feature = "server"))]
+use std::sync::Arc;
 
+#[cfg(any(feature = "client", feature = "server"))]
 use crate::service::{RxJsonRpcMessage, ServiceRole, TxJsonRpcMessage};
 
 pub mod sink_stream;
@@ -132,6 +135,7 @@ pub use streamable_http_client::StreamableHttpClientTransport;
 /// Common use codes
 pub mod common;
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub trait Transport<R>: Send
 where
     R: ServiceRole,
@@ -157,6 +161,7 @@ where
     fn close(&mut self) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub trait IntoTransport<R, E, A>: Send + 'static
 where
     R: ServiceRole,
@@ -165,7 +170,9 @@ where
     fn into_transport(self) -> impl Transport<R, Error = E> + 'static;
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 pub enum TransportAdapterIdentity {}
+#[cfg(any(feature = "client", feature = "server"))]
 impl<R, T, E> IntoTransport<R, E, TransportAdapterIdentity> for T
 where
     T: Transport<R, Error = E> + Send + 'static,
@@ -178,6 +185,7 @@ where
 }
 
 /// A transport that can send a single message and then close itself
+#[cfg(any(feature = "client", feature = "server"))]
 pub struct OneshotTransport<R>
 where
     R: ServiceRole,
@@ -187,6 +195,7 @@ where
     termination: Arc<tokio::sync::Semaphore>,
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 impl<R> OneshotTransport<R>
 where
     R: ServiceRole,
@@ -206,6 +215,7 @@ where
     }
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 impl<R> Transport<R> for OneshotTransport<R>
 where
     R: ServiceRole,
@@ -252,6 +262,7 @@ pub struct DynamicTransportError {
     pub error: Box<dyn std::error::Error + Send + Sync>,
 }
 
+#[cfg(any(feature = "client", feature = "server"))]
 impl DynamicTransportError {
     pub fn new<T: Transport<R> + 'static, R: ServiceRole>(e: T::Error) -> Self {
         Self {

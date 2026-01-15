@@ -356,7 +356,9 @@ impl ServerHandler for SqlQueryServer {
 
                 match request.argument.name.as_str() {
                     "operation" => vec!["SELECT", "INSERT", "UPDATE", "DELETE"],
-                    "table" => vec!["users", "orders", "products", "categories", "reviews"],
+                    "table" => {
+                        vec!["users", "orders", "products", "categories", "reviews"]
+                    }
                     "columns" => {
                         // Only show columns completion if operation is SELECT or UPDATE
                         if let Some(context) = &request.context {

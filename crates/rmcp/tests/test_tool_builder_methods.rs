@@ -1,3 +1,5 @@
+#![cfg(feature = "schemars")]
+
 //cargo test --test test_tool_builder_methods --features "client server macros"
 use rmcp::model::{JsonObject, Tool};
 use schemars::JsonSchema;

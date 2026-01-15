@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path, process::Stdio};
 
 use anyhow::Result;
-use rmcp::{RoleClient, ServiceExt, service::RunningService, transport::ConfigureCommandExt};
+use rmcp::{service::RunningService, transport::ConfigureCommandExt, RoleClient, ServiceExt};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

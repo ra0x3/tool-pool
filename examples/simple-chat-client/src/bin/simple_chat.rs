@@ -6,7 +6,7 @@ use simple_chat_client::{
     chat::ChatSession,
     client::OpenAIClient,
     config::Config,
-    tool::{Tool, ToolSet, get_mcp_tools},
+    tool::{get_mcp_tools, Tool, ToolSet},
 };
 
 #[derive(Parser)]

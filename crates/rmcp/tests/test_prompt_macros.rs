@@ -1,4 +1,6 @@
+#![cfg(feature = "schemars")]
 //cargo test --test test_prompt_macros --features "client server"
+#![cfg(all(feature = "client", feature = "server"))]
 #![allow(dead_code)]
 use std::sync::Arc;
 

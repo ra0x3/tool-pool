@@ -8,9 +8,11 @@ pub use error::{Error, ErrorData, RmcpError};
 
 /// Basic data types in MCP specification
 pub mod model;
+
 #[cfg(any(feature = "client", feature = "server"))]
 #[cfg_attr(docsrs, doc(cfg(any(feature = "client", feature = "server"))))]
 pub mod service;
+/// WASM tool execution support and manifest types
 #[cfg(feature = "client")]
 #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 pub use handler::client::ClientHandler;
@@ -31,6 +33,8 @@ pub use service::{RoleClient, serve_client};
 pub use service::{RoleServer, serve_server};
 
 pub mod handler;
+#[cfg(feature = "server")]
+#[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub mod task_manager;
 pub mod transport;
 
@@ -41,8 +45,8 @@ pub use pastey::paste;
 #[cfg(all(feature = "macros", feature = "server"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "macros", feature = "server"))))]
 pub use rmcp_macros::*;
-#[cfg(all(feature = "macros", feature = "server"))]
-#[cfg_attr(docsrs, doc(cfg(all(feature = "macros", feature = "server"))))]
+#[cfg(feature = "schemars")]
+#[cfg_attr(docsrs, doc(cfg(feature = "schemars")))]
 pub use schemars;
 #[cfg(feature = "macros")]
 #[cfg_attr(docsrs, doc(cfg(feature = "macros")))]

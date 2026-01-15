@@ -1,0 +1,51 @@
+# Test environment for MCP Rust SDK
+FROM rust:1.75-bookworm
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs
+
+# Install Python 3 and pip
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (Python package manager)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install Rust nightly for formatting
+RUN rustup toolchain install nightly --component rustfmt
+
+# Set working directory
+WORKDIR /workspace
+
+# Copy the project
+COPY . .
+
+# Pre-install Rust dependencies to cache them
+RUN cargo fetch
+
+# Install Node.js dependencies for test projects
+RUN if [ -d "crates/rmcp/tests/test_with_js" ]; then \
+        cd crates/rmcp/tests/test_with_js && npm install; \
+    fi
+
+# Install Python dependencies for test projects
+RUN if [ -d "crates/rmcp/tests/test_with_python" ]; then \
+        cd crates/rmcp/tests/test_with_python && uv sync; \
+    fi
+
+# Run tests by default
+CMD ["cargo", "test", "--all-features"]

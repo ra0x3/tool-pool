@@ -1,4 +1,6 @@
 //cargo test --test test_structured_output --features "client server macros"
+#![cfg(feature = "schemars")]
+
 use rmcp::{
     Json, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::IntoCallToolResult, wrapper::Parameters},
