@@ -1,0 +1,29 @@
+[package]
+name = "wasi-multi"
+version = "2.0.0"
+edition = "2021"
+
+[dependencies]
+rmcp = { path = "../../crates/rmcp" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = "0.8"
+tokio = { version = "1.37", features = ["rt", "macros", "io-util", "fs", "net"] }
+reqwest = { version = "0.12", features = ["json"], default-features = false }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"], optional = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+anyhow = "1.0"
+wasi = "0.13"
+glob = "0.3"
+
+[features]
+default = []
+v2 = ["sqlx"]
+
+[[bin]]
+name = "wasi-multi-v1"
+
+[[bin]]
+name = "wasi-multi-v2"
+required-features = ["v2"]
