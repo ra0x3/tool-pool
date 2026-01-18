@@ -1,29 +1,29 @@
 [package]
 name = "rig-integration"
-edition = { workspace = true }
-version = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
-repository = { workspace = true }
-description = { workspace = true }
-keywords = { workspace = true }
-homepage = { workspace = true }
-categories = { workspace = true }
-readme = { workspace = true }
+edition = "2024"
+version = "0.13.0"
+authors = ["4t145 <u4t145@163.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/modelcontextprotocol/rust-sdk/"
+description = "Rust SDK for Model Context Protocol - Rig Integration Example"
+keywords = ["mcp", "sdk", "tokio", "modelcontextprotocol"]
+homepage = "https://github.com/modelcontextprotocol/rust-sdk"
+categories = ["network-programming", "asynchronous"]
+readme = "README.md"
 publish = false
 
 [dependencies]
 anyhow = "1.0"
 futures = "0.3"
 rig-core = "0.28.0"
-rmcp = { workspace = true, features = [
+rmcp = { path = "../../crates/rmcp", version = "0.13.0", features = [
     "client",
     "transport-child-process",
     "transport-streamable-http-client-reqwest"
 ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.45", features = ["full"] }
 toml = "0.9"
 tracing = "0.1"
 tracing-appender = "0.2"

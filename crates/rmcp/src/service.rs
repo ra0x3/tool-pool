@@ -695,7 +695,7 @@ where
                 Event::PeerMessage(m)
             } else {
                 tokio::select! {
-                    m = sink_proxy_rx.recv(), if !sink_proxy_rx.is_closed() => {
+                    m = sink_proxy_rx.recv() => {
                         if let Some(m) = m {
                             Event::ToSink(m)
                         } else {
@@ -711,7 +711,7 @@ where
                             break QuitReason::Closed
                         }
                     }
-                    m = peer_rx.recv(), if !peer_rx.is_closed() => {
+                    m = peer_rx.recv() => {
                         if let Some(m) = m {
                             Event::ProxyMessage(m)
                         } else {

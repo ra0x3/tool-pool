@@ -19,7 +19,7 @@ crate-type = ["cdylib"]
 rmcp = { workspace = true, features = ["server", "macros", "schemars"] }
 schemars = "1.0"
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = ["rt", "io-util", "sync", "macros", "time"] }
+tokio = { version = "=1.36.0", features = ["rt", "io-util", "sync", "macros", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = [
     "env-filter",

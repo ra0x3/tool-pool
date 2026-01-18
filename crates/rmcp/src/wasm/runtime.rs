@@ -4,9 +4,11 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::{
-    WasiCtxBuilder,
-    p1::WasiP1Ctx,
-    p2::pipe::{MemoryInputPipe, MemoryOutputPipe},
+    p2::{
+        WasiCtxBuilder,
+        pipe::{MemoryInputPipe, MemoryOutputPipe},
+    },
+    preview1::WasiP1Ctx,
 };
 
 use super::WasmError;
@@ -188,7 +190,7 @@ impl WasmRuntime {
             // Create linker and add WASI preview 1 functions
             let mut linker = Linker::new(&engine);
             // For WASI preview 1 with modules (not components)
-            wasmtime_wasi::p1::add_to_linker_sync(&mut linker, |ctx: &mut WasiWithPipes| {
+            wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |ctx: &mut WasiWithPipes| {
                 &mut ctx.wasi
             })
             .map_err(|e| WasmError::RuntimeError(format!("Failed to link WASI: {}", e)))?;
