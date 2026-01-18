@@ -1,0 +1,30 @@
+[package]
+name = "wasm-fullstack-v2"
+version = "2.0.0"
+edition = "2021"
+
+[features]
+default = []
+wasmedge-postgres = ["tokio-postgres", "postgres-types"]
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+chrono = "0.4"
+glob = "0.3"
+rmcp = { path = "../../crates/rmcp", features = ["schemars"] }
+schemars = { version = "1.0", features = ["chrono04"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["io-util", "io-std", "fs", "net", "time", "rt", "macros"] }
+tokio-postgres = { version = "0.7", optional = true }
+postgres-types = { version = "0.2", features = ["derive"], optional = true }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+
+# WasmEdge patches for real PostgreSQL and HTTP support
+# Following the official WasmEdge example approach
+[patch.crates-io]
+tokio = { git = "https://github.com/second-state/wasi_tokio.git", branch = "v1.36.x" }
+socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
+tokio-postgres = { git = "https://github.com/second-state/rust-postgres.git" }

@@ -1,0 +1,17 @@
+[package]
+name = "wasm-fullstack-v1"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1"
+chrono = "0.4"
+rmcp = { path = "../../crates/rmcp", features = ["schemars", "server", "macros"] }
+schemars = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.36", features = ["rt", "macros", "sync", "time", "io-util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+wasi = "0.11"

@@ -1,6 +1,13 @@
 [workspace]
 members = ["crates/rmcp", "crates/rmcp-macros", "examples/*"]
-exclude = ["examples/rig-integration"]
+exclude = [
+    "examples/rig-integration",
+    "examples/wasm-fullstack",
+    # Original directory - deprecated
+    "examples/wasm-fullstack-v1",
+    # V1 example - requires WasmEdge-specific patches
+    "examples/wasm-fullstack-v2",  # V2 example - requires WasmEdge-specific patches
+]
 default-members = ["crates/rmcp", "crates/rmcp-macros"]
 resolver = "2"
 
@@ -19,11 +26,3 @@ keywords = ["mcp", "sdk", "tokio", "modelcontextprotocol"]
 homepage = "https://github.com/modelcontextprotocol/rust-sdk"
 categories = ["network-programming", "asynchronous"]
 readme = "README.md"
-
-# WasmEdge patches for real PostgreSQL and HTTP support in wasm-fullstack example
-[patch.crates-io]
-tokio = { git = "https://github.com/second-state/wasi_tokio.git", branch = "v1.36.x" }
-socket2 = { git = "https://github.com/second-state/socket2.git", branch = "v0.5.x" }
-tokio-postgres = { git = "https://github.com/second-state/rust-postgres.git" }
-postgres-types = { git = "https://github.com/second-state/rust-postgres.git" }
-postgres-protocol = { git = "https://github.com/second-state/rust-postgres.git" }

@@ -269,6 +269,11 @@ jobs:
                 echo "Skipping rig-integration (excluded from workspace)"
                 continue
               fi
+              # Skip wasm-fullstack-v2 as it requires WasmEdge-specific patches
+              if [[ "$dir" == *"wasm-fullstack-v2"* ]]; then
+                echo "Skipping wasm-fullstack-v2 (requires WasmEdge runtime with special patches)"
+                continue
+              fi
               if [[ "$dir" == *"wasi"* ]] || [[ "$dir" == *"wasm"* ]]; then
                 cargo build --manifest-path "$dir/Cargo.toml" --target wasm32-wasip2
               else
