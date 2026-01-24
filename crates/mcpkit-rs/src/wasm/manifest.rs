@@ -1,9 +1,10 @@
 //! WASM tool manifest types and parsing
 
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::convert::TryFrom;
-use std::fmt;
+use std::{
+    convert::TryFrom,
+    fmt, fs,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -320,36 +321,35 @@ pub trait BundleVerifier {
 
 impl ManifestLoader for BundleManifest {
     fn load<P: AsRef<Path>>(path: P) -> Result<Self, crate::wasm::WasmError> {
-        let content = fs::read_to_string(path.as_ref())
-            .map_err(|e| crate::wasm::WasmError::ManifestError(
-                format!("Failed to read manifest file: {}", e)
-            ))?;
+        let content = fs::read_to_string(path.as_ref()).map_err(|e| {
+            crate::wasm::WasmError::ManifestError(format!("Failed to read manifest file: {}", e))
+        })?;
         Self::parse(&content)
     }
 
     fn parse(content: &str) -> Result<Self, crate::wasm::WasmError> {
-        toml::from_str(content)
-            .map_err(|e| crate::wasm::WasmError::ManifestError(
-                format!("Failed to parse TOML manifest: {}", e)
-            ))
+        toml::from_str(content).map_err(|e| {
+            crate::wasm::WasmError::ManifestError(format!("Failed to parse TOML manifest: {}", e))
+        })
     }
 }
 
 impl ManifestSaver for BundleManifest {
     fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), crate::wasm::WasmError> {
         let content = self.to_string_pretty()?;
-        fs::write(path.as_ref(), content)
-            .map_err(|e| crate::wasm::WasmError::ManifestError(
-                format!("Failed to write manifest file: {}", e)
-            ))?;
+        fs::write(path.as_ref(), content).map_err(|e| {
+            crate::wasm::WasmError::ManifestError(format!("Failed to write manifest file: {}", e))
+        })?;
         Ok(())
     }
 
     fn to_string_pretty(&self) -> Result<String, crate::wasm::WasmError> {
-        toml::to_string_pretty(&self)
-            .map_err(|e| crate::wasm::WasmError::ManifestError(
-                format!("Failed to serialize manifest to TOML: {}", e)
+        toml::to_string_pretty(&self).map_err(|e| {
+            crate::wasm::WasmError::ManifestError(format!(
+                "Failed to serialize manifest to TOML: {}",
+                e
             ))
+        })
     }
 }
 
@@ -402,10 +402,9 @@ impl BundleVerifier for BundleManifest {
         // Hash the binary file
         let binary_path = bundle_path.join(&self.bundle.binary);
         if binary_path.exists() {
-            let content = fs::read(&binary_path)
-                .map_err(|e| crate::wasm::WasmError::ManifestError(
-                    format!("Failed to read binary file: {}", e)
-                ))?;
+            let content = fs::read(&binary_path).map_err(|e| {
+                crate::wasm::WasmError::ManifestError(format!("Failed to read binary file: {}", e))
+            })?;
             hasher.update(&content);
         }
 
@@ -413,10 +412,12 @@ impl BundleVerifier for BundleManifest {
         for file in &self.bundle.files {
             let file_path = bundle_path.join(file);
             if file_path.exists() {
-                let content = fs::read(&file_path)
-                    .map_err(|e| crate::wasm::WasmError::ManifestError(
-                        format!("Failed to read file {}: {}", file, e)
-                    ))?;
+                let content = fs::read(&file_path).map_err(|e| {
+                    crate::wasm::WasmError::ManifestError(format!(
+                        "Failed to read file {}: {}",
+                        file, e
+                    ))
+                })?;
                 hasher.update(&content);
             }
         }

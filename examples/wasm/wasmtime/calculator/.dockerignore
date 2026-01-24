@@ -1,0 +1,22 @@
+# Exclude target directories
+**/target/
+target/
+
+# Exclude other WASM build artifacts
+*.wasm
+
+# Exclude git files
+.git/
+.gitignore
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude other unnecessary files
+**/*.log
+**/*.tmp
+**/node_modules/
+**/.venv/

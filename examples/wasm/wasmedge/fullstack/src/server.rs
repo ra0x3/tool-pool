@@ -5,7 +5,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use mcpkit_rs::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::{ServerCapabilities, ServerInfo},
+    model::{Implementation, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router, ServerHandler,
 };
 use serde::{Deserialize, Serialize};
@@ -80,7 +80,6 @@ pub struct SearchRequest {
     pub title_contains: String,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct FullStackServer {
     tool_router: ToolRouter<Self>,
@@ -92,7 +91,6 @@ pub struct FullStackServer {
 
 impl FullStackServer {
     pub async fn new() -> Self {
-
         Self {
             tool_router: Self::tool_router(),
             #[cfg(feature = "wasmedge-postgres")]
@@ -104,7 +102,6 @@ impl FullStackServer {
 
     /// Create server instance synchronously
     pub fn new_sync() -> Self {
-
         Self {
             tool_router: Self::tool_router(),
             #[cfg(feature = "wasmedge-postgres")]
@@ -161,7 +158,10 @@ impl FullStackServer {
         }
 
         if client.is_none() {
-            Err("Failed to connect to database. Connection timed out or PostgreSQL is not running.".to_string())
+            Err(
+                "Failed to connect to database. Connection timed out or PostgreSQL is not running."
+                    .to_string(),
+            )
         } else {
             Ok(())
         }
@@ -214,13 +214,12 @@ impl FullStackServer {
             let client = self.db_client.read().await;
             if let Some(client) = client.as_ref() {
                 let todo_id = format!("todo-{}", chrono::Utc::now().timestamp_millis());
-                let user_id_str = req.user_id.to_string();
 
                 match client
                     .execute(
                         "INSERT INTO todos (id, user_id, title, completed, created_at)
                      VALUES ($1, $2, $3, false, NOW())",
-                        &[&todo_id, &user_id_str, &req.title],
+                        &[&todo_id, &req.user_id, &req.title],
                     )
                     .await
                 {
@@ -595,7 +594,6 @@ impl FullStackServer {
         }
     }
 
-
     #[tool(description = "Test PostgreSQL database connection")]
     async fn test_connection(&self) -> Result<String, String> {
         let database_url = std::env::var("DATABASE_URL")
@@ -633,24 +631,20 @@ impl FullStackServer {
                         }))
                         .map_err(|e| e.to_string())
                     }
-                    Ok(Err(e)) => {
-                        serde_json::to_string_pretty(&json!({
-                            "connected": false,
-                            "error": format!("Query failed: {}", e),
-                            "database_url": database_url,
-                            "hint": "Database client exists but query failed"
-                        }))
-                        .map_err(|e| e.to_string())
-                    }
-                    Err(_) => {
-                        serde_json::to_string_pretty(&json!({
-                            "connected": false,
-                            "error": "Connection test timed out after 1 second",
-                            "database_url": database_url,
-                            "hint": "This might indicate network issues or PostgreSQL is not responding"
-                        }))
-                        .map_err(|e| e.to_string())
-                    }
+                    Ok(Err(e)) => serde_json::to_string_pretty(&json!({
+                        "connected": false,
+                        "error": format!("Query failed: {}", e),
+                        "database_url": database_url,
+                        "hint": "Database client exists but query failed"
+                    }))
+                    .map_err(|e| e.to_string()),
+                    Err(_) => serde_json::to_string_pretty(&json!({
+                        "connected": false,
+                        "error": "Connection test timed out after 1 second",
+                        "database_url": database_url,
+                        "hint": "This might indicate network issues or PostgreSQL is not responding"
+                    }))
+                    .map_err(|e| e.to_string()),
                 }
             } else {
                 serde_json::to_string_pretty(&json!({
@@ -678,6 +672,13 @@ impl FullStackServer {
 impl ServerHandler for FullStackServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
+            server_info: Implementation {
+                name: "fullstack".to_string(),
+                title: Some("WASM Fullstack Server".to_string()),
+                version: "1.0.0".to_string(),
+                icons: None,
+                website_url: None,
+            },
             instructions: Some("Full-Stack Server - Real PostgreSQL & HTTP with WasmEdge".into()),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()

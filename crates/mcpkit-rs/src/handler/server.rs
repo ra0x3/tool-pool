@@ -7,6 +7,8 @@ use crate::{
 };
 
 pub mod common;
+#[cfg(feature = "policy")]
+pub mod policy;
 pub mod prompt;
 mod resource;
 pub mod router;
