@@ -1,11 +1,16 @@
-use anyhow::Result;
-use mcpkit_rs::transport::streamable_http_server::{
-    session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
-};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use wasm_fullstack::FullStackServer;
+use std::{env, time::Duration};
 
-const BIND_ADDRESS: &str = "127.0.0.1:8080";
+use anyhow::Result;
+use fullstack::FullStackServer;
+use mcpkit_rs::{
+    transport::streamable_http_server::{
+        session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
+    },
+    PolicyEnabledServer,
+};
+use mcpkit_rs_policy::Policy;
+use tower_http::cors::{Any, CorsLayer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -17,18 +22,46 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
         .init();
 
+    // Get bind address from environment or use default
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let bind_address = format!("{}:{}", host, port);
+
     eprintln!("=== Full-Stack HTTP Server (WasmEdge) ===");
-    eprintln!("Starting HTTP server on: {}", BIND_ADDRESS);
+    eprintln!("HOST env var: {:?}", env::var("HOST"));
+    eprintln!("PORT env var: {:?}", env::var("PORT"));
+    eprintln!("Starting HTTP server on: {}", bind_address);
     eprintln!("Real PostgreSQL & HTTP connections enabled");
     eprintln!();
 
     let ct = tokio_util::sync::CancellationToken::new();
 
+    // Create a policy for enforcement
+    let policy_yaml = r#"
+version: "1.0"
+tools:
+  allow:
+    - test_connection
+    - fetch_todos
+    - create_todo
+    - update_todo
+    - delete_todo
+    - batch_process
+    - search_todos
+    - db_stats
+    - read_wal
+  deny: []
+"#;
+
+    let policy = Policy::from_yaml(policy_yaml)?;
+
     let service = StreamableHttpService::new(
-        || {
+        move || {
             // Create a new server instance for each session
             // The database connection will be attempted on first use
-            let server = FullStackServer::new_sync();
+            let base_server = FullStackServer::new_sync();
+            let server = PolicyEnabledServer::with_policy(base_server, policy.clone())
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
             Ok(server)
         },
         LocalSessionManager::default().into(),
@@ -38,10 +71,22 @@ async fn main() -> Result<()> {
         },
     );
 
-    let router = axum::Router::new().nest_service("/mcp", service);
-    let tcp_listener = tokio::net::TcpListener::bind(BIND_ADDRESS).await?;
+    // Configure CORS - must be permissive for Inspector
+    // Use Any to allow all origins for development
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .expose_headers(Any)
+        .allow_credentials(false)  // Set to false when using Any origin
+        .max_age(Duration::from_secs(3600));
 
-    eprintln!("Server is listening at http://{}/mcp", BIND_ADDRESS);
+    let router = axum::Router::new()
+        .nest_service("/mcp", service)
+        .layer(cors);
+    let tcp_listener = tokio::net::TcpListener::bind(&bind_address).await?;
+
+    eprintln!("Server is listening at http://{}/mcp", bind_address);
     eprintln!("Note: Graceful shutdown not available in WASM - server will run indefinitely");
 
     axum::serve(tcp_listener, router).await?;

@@ -1,0 +1,97 @@
+services:
+  # Calculator MCP server with automatic build and Inspector
+  mcp-calculator:
+    build:
+      context: ../../../../  # Root of the workspace
+      dockerfile: examples/wasm/wasmtime/calculator/Dockerfile
+    container_name: calculator-mcp-server
+    environment:
+      RUST_LOG: info
+    ports:
+      - "6274:6274"  # MCP Inspector UI
+      - "6277:6277"  # MCP Inspector Proxy
+    stdin_open: true
+    tty: true
+    networks:
+      - calculator-net
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6274"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Automated test runner - verifies the server is working
+  test-runner:
+    image: node:20-slim
+    container_name: calculator-test-runner
+    depends_on:
+      mcp-calculator:
+        condition: service_started
+    volumes:
+      - ./test_docker.js:/tests/test_docker.js:ro
+    environment:
+      MCP_SERVER_HOST: mcp-calculator
+      MCP_SERVER_PORT: 6277
+    command: |
+      bash -c "
+        apt-get update && apt-get install -y netcat-traditional curl
+        echo 'Waiting for MCP server to be ready...'
+        sleep 10
+
+        echo '===================================='
+        echo '  Running Calculator Tests'
+        echo '===================================='
+
+        # Run the test script
+        node /tests/test_docker.js
+
+        echo ''
+        echo 'Tests completed!'
+        echo 'Visit http://localhost:6274 to interact with the server'
+      "
+    profiles:
+      - test
+    networks:
+      - calculator-net
+
+  # Interactive client for manual testing
+  interactive-client:
+    image: node:20-slim
+    container_name: calculator-interactive
+    depends_on:
+      mcp-calculator:
+        condition: service_started
+    stdin_open: true
+    tty: true
+    environment:
+      MCP_SERVER_HOST: mcp-calculator
+      MCP_SERVER_PORT: 6277
+    command: |
+      bash -c "
+        apt-get update && apt-get install -y curl
+        echo ''
+        echo '===================================='
+        echo '  Calculator MCP Interactive Client'
+        echo '===================================='
+        echo ''
+        echo 'The MCP server is running!'
+        echo ''
+        echo 'You can:'
+        echo '1. Visit http://localhost:6274 in your browser'
+        echo '2. Use this terminal to send MCP commands'
+        echo ''
+        echo 'Example command:'
+        echo '  curl -X POST http://mcp-calculator:6277/mcp -d {\"method\":\"tools/list\"}'
+        echo ''
+        exec bash
+      "
+    profiles:
+      - interactive
+    networks:
+      - calculator-net
+
+networks:
+  calculator-net:
+    driver: bridge

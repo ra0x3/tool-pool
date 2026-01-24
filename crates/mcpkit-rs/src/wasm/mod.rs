@@ -20,22 +20,22 @@ pub mod loader;
 pub mod runtime;
 
 // Re-export manifest types always
-pub use manifest::{
-    BundleManifest, BundleMetadata, ServerConfig, McpToolInfo,
-    RuntimeRequirements, BundleEnvVar, BundleContents, BundleDependencies, ServiceDependency,
-    ManifestLoader, ManifestSaver, BundleVerifier,
-    CredentialRequirement, CredentialType, WasmToolManifest
-};
-
 // Re-export runtime types only with wasm-tools
 #[cfg(feature = "wasm-tools")]
 pub use credentials::{CredentialProvider, CredentialValue};
 #[cfg(feature = "wasm-tools")]
 pub use executor::WasmToolExecutor;
+#[cfg(all(feature = "wasm-tools", feature = "config"))]
+pub use integration::load_wasm_tools_with_config;
 #[cfg(feature = "wasm-tools")]
 pub use integration::{CompositeToolHandler, WasmToolHandler, load_wasm_tools_from_directory};
 #[cfg(feature = "wasm-tools")]
 pub use loader::{LoadedWasmTool, WasmToolRegistry};
+pub use manifest::{
+    BundleContents, BundleDependencies, BundleEnvVar, BundleManifest, BundleMetadata,
+    BundleVerifier, CredentialRequirement, CredentialType, ManifestLoader, ManifestSaver,
+    McpToolInfo, RuntimeRequirements, ServerConfig, ServiceDependency, WasmToolManifest,
+};
 #[cfg(feature = "wasm-tools")]
 pub use runtime::{WasmContext, WasmRuntime};
 

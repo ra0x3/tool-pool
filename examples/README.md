@@ -73,9 +73,12 @@ see [servers/README.md](servers/README.md)
 - [Rig](rig-integration) A stream chatbot with rig
 - [Simple Chat Client](simple-chat-client) A simple chat client implementation using the Model Context Protocol (MCP) SDK.
 
-# WASI
+# WASM Examples
 
-- [WASI-P2 runtime](wasi) How it works with wasip2
+- [WASM Examples](wasm) WebAssembly examples with Docker quick start
+  - **One command deployment:** `docker-compose up`
+  - Wasmtime Calculator example
+  - WasmEdge Fullstack example with PostgreSQL
 
 ## Use Mcp Inspector
 

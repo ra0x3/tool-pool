@@ -1,117 +1,74 @@
 # Fullstack (WasmEdge Example)
 
-A full-featured MCP server with PostgreSQL integration running on WasmEdge runtime. Supports two transports: **stdio** (default) and **HTTP**.
+Full-featured MCP server with PostgreSQL integration running on WasmEdge runtime.
 
-## Transport Selection
+## 🚀 Quick Start
 
-**stdio (default)**: Process isolation for parallel WASM modules. Each instance gets isolated memory, preventing race conditions on shared storage. OS handles lifecycle/cleanup.
-
-**HTTP**: Multi-tenant server for centralized access, load balancing, remote APIs.
-
-## Prerequisites
-
+### Mode 1: Docker (Everything Automated)
 ```bash
-# WasmEdge (required for networking)
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.14.0
-source $HOME/.wasmedge/env
-
-# PostgreSQL
-docker-compose up -d
+$ docker-compose up                # PostgreSQL + MCP server + Inspector
+# Access at http://localhost:5173
+$ docker-compose down              # Stop services
+$ docker-compose down -v           # Stop and remove data
 ```
 
-## Build
-
+### Mode 2: Manual (Direct Execution)
 ```bash
-./build.sh                    # stdio only (default)
-./build.sh -t http           # HTTP only
-./build.sh -t both           # Both transports
+# Start PostgreSQL
+$ docker-compose up -d             # Just database
+
+# Build and run MCP server
+$ ./build.sh                       # Build stdio transport (default)
+$ ./build.sh -t http              # Or build HTTP transport
+$ ./build.sh -t both              # Or build both
+
+# Run stdio server
+$ DATABASE_URL="postgres://postgres:postgres@localhost/todo" \
+  npx @modelcontextprotocol/inspector wasmedge run \
+  target/wasm32-wasip1/release/fullstack-stdio.wasm
+
+# Or run HTTP server
+$ DATABASE_URL="postgres://postgres:postgres@localhost/todo" \
+  wasmedge run target/wasm32-wasip1/release/fullstack-http.wasm
+# Access at http://127.0.0.1:8080/mcp
 ```
 
-## Run
+## Transport Modes
 
-### stdio Transport
-```bash
-npx @modelcontextprotocol/inspector wasmedge target/wasm32-wasip1/release/fullstack-stdio.wasm
-```
-
-### HTTP Transport
-```bash
-# Server must run first
-wasmedge target/wasm32-wasip1/release/fullstack-http.wasm
-
-# Connect at http://127.0.0.1:8080/mcp
-```
-
-
-## Using Artifacts with Claude CLI
-
-```bash
-# Build first
-./build.sh
-
-# Add to Claude CLI
-claude mcp add-json fullstack '{
-  "type":"stdio",
-  "command":"wasmedge",
-  "args":[
-    "--dir","/path/to/home:/path/to/home",
-    "/path/to/mcpkit-rs/examples/wasm/wasmedge/fullstack/target/wasm32-wasip1/release/fullstack-stdio.wasm"
-  ],
-  "env":{"RUST_LOG":"info"}
-}'
-
-# Test connection
-claude --debug "mcp"
-# Use /mcp to connect to fullstack
-
-# Call a tool
-claude -p \
-  --allowedTools "mcp__fullstack__db_stats" \
-  --debug mcp \
-  "Call the db_stats tool and return the raw JSON result only."
-```
-
-Expected output:
-```json
-{
-  "completed": 1,
-  "completion_rate": 25.0,
-  "pending": 3,
-  "source": "postgresql",
-  "total": 4,
-  "unique_users": 2
-}
-```
+| Mode | Use Case | Isolation | Multi-tenant |
+|------|----------|-----------|--------------|
+| **stdio** | Module orchestration | Process-level | No |
+| **HTTP** | API gateway | Shared process | Yes |
 
 ## Available Tools
 
 | Tool | Description |
 |------|------------|
-| `fetch_todos` | SELECT from PostgreSQL or JSONPlaceholder API |
-| `create_todo` | INSERT with audit logging |
-| `update_todo` | UPDATE existing todo |
-| `delete_todo` | DELETE with cascade |
+| `fetch_todos` | Get all todos from database |
+| `create_todo` | Create new todo with audit log |
+| `update_todo` | Update existing todo |
+| `delete_todo` | Delete todo with cascade |
 | `batch_process` | Batch operations on multiple todos |
-| `search_todos` | LIKE query on titles |
-| `db_stats` | Aggregated statistics |
-| `test_connection` | PostgreSQL health check |
+| `search_todos` | Search todos by title |
+| `db_stats` | Get database statistics |
+| `test_connection` | Test PostgreSQL connection |
 
-## Architecture Comparison
+## Test Harness
 
-| Aspect | stdio | HTTP |
-|--------|-------|------|
-| Isolation | Process-level | Shared process |
-| Parallelism | Native | Requires mutex/channels |
-| Multi-tenant | No | Yes |
-| Remote access | No | Yes |
-| Resource cleanup | Automatic | Manual |
-| Use case | Module orchestration | API gateway |
+```bash
+$ ./test_harness.sh   # Run automated tests (starts PostgreSQL if needed)
+```
+
+## Policy Configuration
+
+Configured via `config.yaml`:
+- **Allowed**: Database operations, localhost network, /tmp access
+- **Denied**: External network, system directories, sensitive env vars
+- **Limits**: 64MB memory, 30s execution time
 
 ## Technical Stack
 
-- **WasmEdge patches**: TCP sockets + HTTP in WASM
-- **Second State forks**: tokio/axum/tokio-postgres with networking
-- **StreamableHTTP**: Session-based SSE transport
-- **Database**: PostgreSQL with audit logging via WAL
-
-Schema in `init.sql`: `todos`, `wal_entries`, `todo_stats` view.
+- **WasmEdge**: TCP sockets + HTTP support in WASM
+- **Database**: PostgreSQL with audit logging
+- **Transport**: stdio (default) or HTTP
+- **Schema**: See `init.sql` for database structure
