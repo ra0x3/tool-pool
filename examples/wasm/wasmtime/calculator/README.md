@@ -1,46 +1,38 @@
 # Calculator (Wasmtime Example)
 
-A minimal MCP server compiled to WebAssembly using the WASI Component Model (preview 2) for Wasmtime runtime.
+A minimal MCP server compiled to WebAssembly using WASI Component Model (preview 2) for Wasmtime.
 
-## Prerequisites
+## 🚀 Quick Start
 
-- Rust with `wasm32-wasip2` target: `rustup target add wasm32-wasip2`
-- Wasmtime runtime (optional): [Installation guide](https://wasmtime.dev/install.sh)
-
-## Build
-
+### Mode 1: Docker (Everything Automated)
 ```bash
-# Using the build script
-./build.sh
-
-# Or manually
-cargo build --target wasm32-wasip2 --release
+$ docker-compose up                # Start with Inspector UI
+# Access at http://localhost:5173
+$ docker-compose down              # Stop services
 ```
 
-Output: `calculator.wasm` (copied from `../../../../target/wasm32-wasip2/release/calculator.wasm`)
-
-## Run
-
+### Mode 2: Manual (Direct Execution)
 ```bash
-# With MCP Inspector and Wasmtime
-npx @modelcontextprotocol/inspector wasmtime run ./calculator.wasm
-
-# Or run directly with Wasmtime
-wasmtime run ./calculator.wasm
+$ ./build.sh                       # Build WASM module
+$ npx @modelcontextprotocol/inspector wasmtime run ./calculator.wasm
 ```
 
 ## Tools
 
-| Tool | Parameters | Returns |
-|------|-----------|---------|
-| `add` | `a: f64, b: f64` | Sum |
-| `subtract` | `a: f64, b: f64` | Difference |
-| `multiply` | `a: f64, b: f64` | Product |
-| `divide` | `a: f64, b: f64` | Quotient (error if b=0) |
+| Tool | Description | Example |
+|------|------------|---------|
+| `add` | Addition | `add(5, 3) = 8` |
+| `subtract` | Subtraction | `subtract(10, 4) = 6` |
+| `multiply` | Multiplication | `multiply(6, 7) = 42` |
+| `divide` | Division | `divide(20, 4) = 5` |
 
-## Technical Details
+## Test Harness
 
-- Runtime: WASI Preview 2
-- Protocol: MCP over stdio
-- Binary size: ~2.5 MB (release)
-- Limitations: No networking (WASI constraint)
+```bash
+$ ./test_harness.sh   # Run automated tests
+```
+
+## Technical Stack
+- **Runtime**: WASI Component Model (preview 2)
+- **Transport**: MCP over stdio
+- **Policy**: Configurable via config.yaml

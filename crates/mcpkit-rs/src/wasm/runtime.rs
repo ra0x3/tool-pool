@@ -4,10 +4,8 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::{
-    p2::{
-        WasiCtxBuilder,
-        pipe::{MemoryInputPipe, MemoryOutputPipe},
-    },
+    WasiCtxBuilder,
+    pipe::{MemoryInputPipe, MemoryOutputPipe},
     preview1::WasiP1Ctx,
 };
 
@@ -104,10 +102,7 @@ impl WasmContext {
             builder.env(key, value);
         }
 
-        // Note: In wasmtime 28, clock access is configured differently
-        // The new API doesn't use ambient_authority() anymore
-
-        // Build the preview1 context
+        // Build the WASI preview1 context
         let wasi = builder.build_p1();
 
         Ok(WasiWithPipes {
@@ -179,7 +174,10 @@ impl WasmRuntime {
 
         // Use spawn_blocking to avoid tokio runtime conflicts with WASI
         let result = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, WasmError> {
-            // Create store with WASI and pipes
+            // Keep reference to stdout pipe for later
+            let stdout_pipe = wasi_with_pipes.stdout.clone();
+
+            // Create store with WASI pipes wrapper
             let mut store = Store::new(&engine, wasi_with_pipes);
 
             // Set fuel for execution limits to prevent DOS
@@ -187,13 +185,11 @@ impl WasmRuntime {
                 .set_fuel(fuel_limit)
                 .map_err(|e| WasmError::RuntimeError(format!("Failed to set fuel: {}", e)))?;
 
-            // Create linker and add WASI preview 1 functions
-            let mut linker = Linker::new(&engine);
-            // For WASI preview 1 with modules (not components)
-            wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |ctx: &mut WasiWithPipes| {
-                &mut ctx.wasi
-            })
-            .map_err(|e| WasmError::RuntimeError(format!("Failed to link WASI: {}", e)))?;
+            // Create linker and add WASI preview1 functions
+            let mut linker: Linker<WasiWithPipes> = Linker::new(&engine);
+            // Add WASI functions to the linker
+            wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |ctx| &mut ctx.wasi)
+                .map_err(|e| WasmError::RuntimeError(format!("Failed to link WASI: {}", e)))?;
 
             // Instantiate the module
             let instance = linker
@@ -211,8 +207,7 @@ impl WasmRuntime {
             let exec_result = start.call(&mut store, ());
 
             // Get stdout from the pipe after execution regardless of result
-            let wasi_with_pipes = store.data();
-            let output_bytes = wasi_with_pipes.stdout.contents();
+            let output_bytes = stdout_pipe.contents();
 
             // Now check if the execution succeeded
             match exec_result {

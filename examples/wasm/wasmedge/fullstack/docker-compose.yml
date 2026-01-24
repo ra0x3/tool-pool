@@ -1,9 +1,8 @@
-version: '3.8'
-
 services:
+  # PostgreSQL database (always runs)
   postgres:
     image: postgres:16-alpine
-    container_name: wasi-multi-postgres
+    container_name: fullstack-postgres
     environment:
       POSTGRES_DB: todo
       POSTGRES_USER: postgres
@@ -18,6 +17,119 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - fullstack-net
+
+  # WasmEdge MCP server with automatic build and Inspector
+  # Runs with --profile full
+  mcp-server:
+    profiles: ["full"]
+    build:
+      context: ../../../../  # Root of the workspace
+      dockerfile: examples/wasm/wasmedge/fullstack/Dockerfile
+    container_name: fullstack-mcp-server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/todo
+      RUST_LOG: info
+      SKIP_DB_INIT: false
+      HOST: "0.0.0.0"  # Bind to all interfaces for external access
+      PORT: "8080"
+    ports:
+      - "6274:6274"  # MCP Inspector UI
+      - "6277:6277"  # MCP Inspector Proxy
+      - "8080:8080"  # If using HTTP transport (optional)
+    stdin_open: true
+    tty: true
+    networks:
+      - fullstack-net
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6274"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MCP server for testing (HTTP transport without Inspector)
+  mcp-server-test:
+    profiles: ["test"]
+    build:
+      context: ../../../../  # Root of the workspace
+      dockerfile: examples/wasm/wasmedge/fullstack/Dockerfile
+    container_name: fullstack-mcp-server-test
+    entrypoint: ["/app/entrypoint-test.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/todo
+      RUST_LOG: info
+      SKIP_DB_INIT: false
+      HOST: "0.0.0.0"  # Bind to all interfaces for container networking
+      PORT: "8080"
+    ports:
+      - "8080:8080"  # HTTP server
+    networks:
+      - fullstack-net
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  # Test runner - verifies server is running with HTTP transport
+  test-runner:
+    profiles: ["test"]
+    image: node:20-slim
+    container_name: fullstack-test-runner
+    depends_on:
+      mcp-server-test:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./test_docker.js:/tests/test_docker.js:ro
+    environment:
+      MCP_SERVER_HOST: mcp-server-test
+      MCP_SERVER_PORT: 8080
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/todo
+    command: |
+      bash -c "
+        apt-get update && apt-get install -y netcat-traditional curl postgresql-client
+        echo 'Waiting for MCP server to be ready...'
+        sleep 10
+
+        echo '===================================='
+        echo '  Running Fullstack Tests'
+        echo '===================================='
+
+        # Verify database connection
+        PGPASSWORD=postgres psql -h postgres -U postgres -d todo -c 'SELECT COUNT(*) FROM todos;' && \
+          echo '✓ Database connection verified'
+
+        # Run the test script and capture exit code
+        node /tests/test_docker.js
+        TEST_EXIT_CODE=$?
+
+        echo ''
+        echo 'Tests completed!'
+        echo 'Visit http://localhost:6274 to interact with the server'
+
+        # Exit with the test script's exit code
+        exit $TEST_EXIT_CODE
+      "
+    networks:
+      - fullstack-net
 
 volumes:
   postgres_data:
+
+networks:
+  fullstack-net:
+    driver: bridge

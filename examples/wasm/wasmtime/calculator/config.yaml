@@ -1,0 +1,157 @@
+# Calculator WASM module configuration
+version: "1.0"
+
+metadata:
+  name: "Calculator MCP Server"
+  description: "WASM-based calculator with strict security policy"
+
+server:
+  name: wasm-calculator
+  version: 0.1.0
+  bind: 127.0.0.1
+  port: 3000
+  debug: false
+  log_level: info
+
+transport:
+  type: stdio
+  settings:
+    buffer_size: 32768
+
+# Security policy for calculator WASM module
+policy:
+  version: "1.0"
+  description: "Strict sandbox policy for calculator"
+
+  core:
+    # No network access for calculator
+    network:
+      deny:
+        - host: "*"
+
+    # Only allow access to temp directory for calculations
+    storage:
+      allow:
+        - uri: "fs:///tmp/calculator/**"
+          access: ["read", "write"]
+      deny:
+        - uri: "fs:///**"
+          access: ["read", "write", "execute"]
+
+    # No environment variables
+    environment:
+      deny:
+        - key: "*"
+
+    # Strict resource limits
+    resources:
+      limits:
+        cpu: "100m"       # 0.1 core
+        memory: "32Mi"    # 32 MiB
+        execution_time: "5s"  # 5 seconds max
+
+  # MCP-specific permissions
+  mcp:
+    tools:
+      allow:
+        - name: "add"
+          max_calls_per_minute: 1000
+        - name: "subtract"
+          max_calls_per_minute: 1000
+        - name: "multiply"
+          max_calls_per_minute: 1000
+        - name: "divide"
+          max_calls_per_minute: 1000
+      deny:
+        - name: "*"  # Deny all other tools
+
+    prompts:
+      deny:
+        - name: "*"  # Calculator doesn't need prompts
+
+    resources:
+      deny:
+        - uri: "*"  # No resource access
+          operations: ["read", "write", "delete"]
+
+    transport:
+      stdio: true
+      http:
+        allowed_hosts: []
+      websocket: false
+
+runtime:
+  type: wasmtime
+  wasm:
+    # module_path: ./target/wasm32-unknown-unknown/release/calculator.wasm
+    fuel: 10000000  # Limited fuel for calculations
+    memory_pages: 16  # 1MB memory
+    cache: true
+    cache_dir: ./.wasm-cache
+  limits:
+    cpu: "100m"
+    memory: "32Mi"
+    execution_time: "5s"
+    max_requests_per_minute: 1000
+
+mcp:
+  protocol_version: "2024-11-05"
+
+  tools:
+    - name: add
+      description: "Add two numbers"
+      input_schema:
+        type: object
+        properties:
+          a:
+            type: number
+            description: "First number"
+          b:
+            type: number
+            description: "Second number"
+        required: ["a", "b"]
+
+    - name: subtract
+      description: "Subtract two numbers"
+      input_schema:
+        type: object
+        properties:
+          a:
+            type: number
+            description: "First number"
+          b:
+            type: number
+            description: "Second number"
+        required: ["a", "b"]
+
+    - name: multiply
+      description: "Multiply two numbers"
+      input_schema:
+        type: object
+        properties:
+          a:
+            type: number
+            description: "First number"
+          b:
+            type: number
+            description: "Second number"
+        required: ["a", "b"]
+
+    - name: divide
+      description: "Divide two numbers"
+      input_schema:
+        type: object
+        properties:
+          a:
+            type: number
+            description: "Dividend"
+          b:
+            type: number
+            description: "Divisor (non-zero)"
+        required: ["a", "b"]
+
+  capabilities:
+    tools: true
+    prompts: false
+    resources: false
+    logging: true

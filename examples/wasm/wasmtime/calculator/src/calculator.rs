@@ -3,7 +3,7 @@
 use mcpkit_rs::{
     ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
-    model::{ServerCapabilities, ServerInfo},
+    model::{Implementation, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router,
 };
 
@@ -58,6 +58,13 @@ impl Calculator {
 impl ServerHandler for Calculator {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
+            server_info: Implementation {
+                name: "calculator".to_string(),
+                title: Some("WASM Calculator Server".to_string()),
+                version: "1.0.0".to_string(),
+                icons: None,
+                website_url: None,
+            },
             instructions: Some("A simple calculator".into()),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()

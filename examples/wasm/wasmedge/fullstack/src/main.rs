@@ -1,6 +1,6 @@
 use anyhow::Result;
+use fullstack::FullStackServer;
 use mcpkit_rs::ServiceExt;
-use wasm_fullstack::FullStackServer;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -10,7 +10,7 @@ async fn main() -> Result<()> {
         .init();
 
     let server = FullStackServer::new().await;
-    use wasm_fullstack::wasi_io;
+    use fullstack::wasi_io;
     match server.serve(wasi_io()).await {
         Ok(service) => {
             tracing::info!("Full-Stack Server running");

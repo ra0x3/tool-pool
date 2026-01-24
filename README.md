@@ -58,19 +58,19 @@ See [Tool Pool Technical Design](docs/TOOL_POOL_TECH_DESIGN_v1.md) for details.
 #### WASI Runtime (Wasmtime)
 ```bash
 # Install wasmtime
-curl https://wasmtime.dev/install.sh -sSf | bash
+$ curl https://wasmtime.dev/install.sh -sSf | bash
 
 # Add WASI compilation target
-rustup target add wasm32-wasip2
+$ rustup target add wasm32-wasip2
 ```
 
 #### WasmEdge Runtime
 ```bash
 # Install WasmEdge with plugins
-curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasmedge_rustls
+$ curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- --plugins wasmedge_rustls
 
 # Add WasmEdge compilation target (uses wasm32-wasip1)
-rustup target add wasm32-wasip1
+$ rustup target add wasm32-wasip1
 ```
 
 ### Cargo Dependencies

@@ -29,7 +29,7 @@ env:
 # cancel-previous-runs (always runs first)
 #   └─► stage-1: spellcheck, lint-commits, doc
 #         └─► stage-2: fmt, cargo-sort, clippy, security-audit
-#               └─► stage-3: build (matrix), test (matrix), example-test
+#               └─► stage-3: build (matrix), test (matrix), uat-examples
 #                     └─► stage-4: coverage
 #                           └─► stage-5: ci-success
 
@@ -236,8 +236,8 @@ jobs:
       - name: cargo test ${{ matrix.features }}
         run: cargo test ${{ matrix.features }}
 
-  example-test:
-    name: Example Test
+  uat-examples:
+    name: UAT Examples
     runs-on: ubuntu-latest
     needs: [clippy, security-audit]
     if: always() && !cancelled() && !contains(needs.*.result, 'failure')
@@ -264,9 +264,24 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Add target WASI preview 2
+      - name: Add WASM targets
         run: |
           rustup target add wasm32-wasip2
+          rustup target add wasm32-wasip1
+
+      - name: Install Wasmtime
+        run: |
+          curl https://wasmtime.dev/install.sh -sSf | bash
+          echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
+
+      - name: Install Docker Compose
+        run: |
+          # Docker Compose v2 is already installed on GitHub Actions Ubuntu runners
+          docker compose version || {
+            echo "Installing Docker Compose..."
+            sudo apt-get update
+            sudo apt-get install -y docker-compose-plugin
+          }
 
       - name: Build examples
         run: |
@@ -317,11 +332,45 @@ jobs:
             fi
           done
 
+      - name: Test Calculator with test harness
+        run: |
+          cd examples/wasm/wasmtime/calculator
+
+          # Build the calculator WASM
+          ./build.sh
+
+          # Check if test harness exists and run it
+          if [ -f "test_harness.sh" ]; then
+            echo "Running Calculator test harness..."
+            ./test_harness.sh
+            echo "✓ Calculator test harness passed"
+          elif [ -f "test.sh" ]; then
+            echo "Running Calculator test script..."
+            ./test.sh
+            echo "✓ Calculator test script passed"
+          else
+            echo "⚠ No test harness found for Calculator, skipping"
+          fi
+
+      - name: Test Fullstack with Docker (test profile)
+        run: |
+          cd examples/wasm/wasmedge/fullstack
+
+          echo "Running Fullstack Docker tests with test profile..."
+          docker compose --profile test up --build --abort-on-container-exit --exit-code-from test-runner || {
+            echo "Fullstack Docker tests failed"
+            docker compose logs
+            docker compose down -v
+            exit 1
+          }
+          docker compose down -v
+          echo "✓ Fullstack Docker tests passed"
+
   # Stage 4: Code coverage
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    needs: [build, test, example-test]
+    needs: [build, test, uat-examples]
     if: always() && !cancelled() && !contains(needs.*.result, 'failure')
     permissions:
       contents: write

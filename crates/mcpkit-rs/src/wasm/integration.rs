@@ -21,13 +21,36 @@ pub struct WasmToolHandler {
 
     /// The tool registry
     registry: Arc<WasmToolRegistry>,
+
+    #[cfg(feature = "config")]
+    /// Optional server configuration
+    _config: Option<Arc<crate::config::ServerConfig>>,
 }
 
 impl WasmToolHandler {
     /// Create a new WASM tool handler
     pub fn new(registry: Arc<WasmToolRegistry>) -> Self {
         let executor = WasmToolExecutor::new(registry.clone());
-        Self { executor, registry }
+        Self {
+            executor,
+            registry,
+            #[cfg(feature = "config")]
+            _config: None,
+        }
+    }
+
+    #[cfg(feature = "config")]
+    /// Create a new WASM tool handler with configuration
+    pub fn with_config(
+        registry: Arc<WasmToolRegistry>,
+        config: Arc<crate::config::ServerConfig>,
+    ) -> Self {
+        let executor = WasmToolExecutor::with_config(registry.clone(), config.clone());
+        Self {
+            executor,
+            registry,
+            _config: Some(config),
+        }
     }
 
     /// Get the executor
@@ -84,6 +107,20 @@ impl<H: ServerHandler> CompositeToolHandler<H> {
             wasm_handler,
         }
     }
+
+    #[cfg(feature = "config")]
+    /// Create a new composite handler with configuration
+    pub fn with_config(
+        native_handler: H,
+        wasm_registry: Arc<WasmToolRegistry>,
+        config: Arc<crate::config::ServerConfig>,
+    ) -> Self {
+        let wasm_handler = WasmToolHandler::with_config(wasm_registry, config);
+        Self {
+            native_handler,
+            wasm_handler,
+        }
+    }
 }
 
 impl<H: ServerHandler + Send + Sync> ServerHandler for CompositeToolHandler<H> {
@@ -129,6 +166,28 @@ pub async fn load_wasm_tools_from_directory(
         credential_provider,
     )?);
     Ok(WasmToolHandler::new(registry))
+}
+
+#[cfg(feature = "config")]
+/// Helper to load WASM tools from a directory with configuration
+pub async fn load_wasm_tools_with_config(
+    tool_dir: impl AsRef<std::path::Path>,
+    config_path: impl AsRef<std::path::Path>,
+    credential_provider: Arc<dyn super::CredentialProvider>,
+) -> Result<WasmToolHandler, Box<dyn std::error::Error>> {
+    // Load configuration
+    let config =
+        crate::config::ServerConfig::from_file(config_path.as_ref().to_str().unwrap()).await?;
+    let config = Arc::new(config);
+
+    // Load registry
+    let registry = Arc::new(WasmToolRegistry::load_from_directory(
+        tool_dir,
+        credential_provider,
+    )?);
+
+    // Create handler with config
+    Ok(WasmToolHandler::with_config(registry, config))
 }
 
 #[cfg(test)]

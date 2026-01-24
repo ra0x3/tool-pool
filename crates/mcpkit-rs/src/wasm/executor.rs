@@ -13,12 +13,32 @@ use crate::{
 pub struct WasmToolExecutor {
     /// Tool registry
     registry: Arc<WasmToolRegistry>,
+
+    #[cfg(feature = "config")]
+    /// Optional server configuration
+    config: Option<Arc<crate::config::ServerConfig>>,
 }
 
 impl WasmToolExecutor {
     /// Create a new executor
     pub fn new(registry: Arc<WasmToolRegistry>) -> Self {
-        Self { registry }
+        Self {
+            registry,
+            #[cfg(feature = "config")]
+            config: None,
+        }
+    }
+
+    #[cfg(feature = "config")]
+    /// Create a new executor with configuration
+    pub fn with_config(
+        registry: Arc<WasmToolRegistry>,
+        config: Arc<crate::config::ServerConfig>,
+    ) -> Self {
+        Self {
+            registry,
+            config: Some(config),
+        }
     }
 
     /// Execute a WASM tool
@@ -27,6 +47,17 @@ impl WasmToolExecutor {
         tool_name: &str,
         arguments: JsonObject,
     ) -> Result<CallToolResult, ErrorData> {
+        // Check policy if configured
+        #[cfg(feature = "config")]
+        if let Some(ref config) = self.config {
+            if !config.is_tool_allowed(tool_name) {
+                return Err(ErrorData::invalid_request(
+                    format!("Tool '{}' is not allowed by policy", tool_name),
+                    None,
+                ));
+            }
+        }
+
         // Get the tool
         let tool = self
             .registry
@@ -39,6 +70,20 @@ impl WasmToolExecutor {
         })?;
 
         // Prepare execution context
+        #[cfg(feature = "config")]
+        let mut context = if let Some(ref config) = self.config {
+            // Use config-based context with policy limits
+            config
+                .create_wasm_context()
+                .with_stdin(input_json)
+                .with_timeout(Duration::from_secs(tool.manifest.timeout_seconds))
+        } else {
+            WasmContext::new()
+                .with_stdin(input_json)
+                .with_timeout(Duration::from_secs(tool.manifest.timeout_seconds))
+        };
+
+        #[cfg(not(feature = "config"))]
         let mut context = WasmContext::new()
             .with_stdin(input_json)
             .with_timeout(Duration::from_secs(tool.manifest.timeout_seconds));

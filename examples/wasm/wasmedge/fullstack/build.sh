@@ -15,6 +15,7 @@ NC='\033[0m' # No Color
 # Default values
 TRANSPORT="stdio"  # Default to stdio for better module isolation
 FEATURES="wasmedge-postgres"
+HOST="127.0.0.1"  # Default host for HTTP transport
 
 show_help() {
     cat << EOF
@@ -26,7 +27,8 @@ ${BLUE}Usage:${NC}
   ./build.sh [OPTIONS]
 
 ${BLUE}Options:${NC}
-  -h, --help              Show this help message
+  --help                  Show this help message
+  -h, --host HOST         Host address for HTTP transport (default: 127.0.0.1)
   -t, --transport TYPE    Transport type: stdio, http, or both (default: stdio)
                           stdio: stdin/stdout transport (better for parallel modules)
                           http:  HTTP transport (multi-tenant, network-accessible)
@@ -37,8 +39,8 @@ ${BLUE}Examples:${NC}
   # Build both binaries with PostgreSQL support
   ./build.sh
 
-  # Build only the HTTP server
-  ./build.sh --transport http
+  # Build only the HTTP server with custom host
+  ./build.sh --transport http --host 0.0.0.0
 
   # Build only the stdio server
   ./build.sh --transport stdio
@@ -47,12 +49,20 @@ ${BLUE}Examples:${NC}
   ./build.sh --features ""
 
 ${BLUE}Running the binaries:${NC}
-  # stdio transport
-  npx @modelcontextprotocol/inspector wasmedge target/wasm32-wasip1/release/fullstack-stdio.wasm
+  # stdio transport with MCP Inspector (all-in-one)
+  DATABASE_URL="postgres://postgres:postgres@localhost/todo" \\
+    npx @modelcontextprotocol/inspector wasmedge run target/wasm32-wasip1/release/fullstack-stdio.wasm
 
-  # HTTP transport
-  wasmedge target/wasm32-wasip1/release/fullstack-http.wasm
-  # Then access at: http://127.0.0.1:8080/mcp
+  # HTTP transport requires two terminals:
+  # Terminal 1: Run the HTTP server
+  HOST="${HOST}" PORT="8080" DATABASE_URL="postgres://postgres:postgres@localhost/todo" \\
+    wasmedge target/wasm32-wasip1/release/fullstack-http.wasm
+
+  # Terminal 2: Run MCP Inspector
+  DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
+
+  # Then connect via Inspector UI at http://localhost:6274
+  # Select 'Streamable HTTP' and enter URL: http://${HOST}:8080/mcp
 
 ${BLUE}Prerequisites:${NC}
   - WasmEdge runtime installed
@@ -65,9 +75,13 @@ EOF
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -h|--help)
+        --help)
             show_help
             exit 0
+            ;;
+        -h|--host)
+            HOST="$2"
+            shift 2
             ;;
         -t|--transport)
             TRANSPORT="$2"
@@ -108,6 +122,9 @@ build_binary() {
 }
 
 printf "${BLUE}=== Building fullstack ===${NC}\n"
+if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "http" ]; then
+    echo "HTTP host configured: $HOST"
+fi
 echo ""
 
 if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "stdio" ]; then
@@ -130,28 +147,60 @@ if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "http" ]; then
     echo "  target/wasm32-wasip1/release/fullstack-http.wasm"
 fi
 echo ""
-printf "${BLUE}Quick start:${NC}\n"
-if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "stdio" ]; then
-    printf "  ${GREEN}# stdio transport:${NC}\n"
-    echo "  npx @modelcontextprotocol/inspector wasmedge target/wasm32-wasip1/release/fullstack-stdio.wasm"
-    echo ""
-fi
-if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "http" ]; then
-    printf "  ${GREEN}# HTTP transport:${NC}\n"
-    echo "  wasmedge target/wasm32-wasip1/release/fullstack-http.wasm"
-    echo "  # Access at: http://127.0.0.1:8080/mcp"
-    echo ""
-fi
+printf "${BLUE}========================================${NC}\n"
+printf "${BLUE}     DEPLOYMENT OPTIONS${NC}\n"
+printf "${BLUE}========================================${NC}\n"
 echo ""
-printf "${BLUE}Database configuration:${NC}\n"
-echo "  # Start PostgreSQL (required)"
+printf "${GREEN}Mode 1: Manual Testing (PostgreSQL only)${NC}\n"
+echo "----------------------------------------"
+echo "Perfect for development and debugging. PostgreSQL runs in Docker,"
+echo "while you run the MCP server manually with live code changes."
+echo ""
+echo "  # Start just PostgreSQL"
 echo "  docker-compose up -d"
 echo ""
-echo "  # Optional: Set custom database URL"
-echo "  DATABASE_URL=\"postgres://postgres:postgres@localhost/todo\" \\"
 if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "stdio" ]; then
-    echo "    wasmedge --env DATABASE_URL target/wasm32-wasip1/release/fullstack-stdio.wasm"
+    echo "  # Run stdio server with MCP Inspector (all-in-one)"
+    echo "  DATABASE_URL=\"postgres://postgres:postgres@localhost/todo\" \\"
+    echo "    npx @modelcontextprotocol/inspector wasmedge run target/wasm32-wasip1/release/fullstack-stdio.wasm"
+    echo "  # Access Inspector UI at: http://localhost:6274"
+    echo ""
 fi
 if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "http" ]; then
-    echo "    wasmedge --env DATABASE_URL target/wasm32-wasip1/release/fullstack-http.wasm"
+    echo "  # Run HTTP server (Terminal 1)"
+    echo "  HOST=\"${HOST}\" PORT=\"8080\" DATABASE_URL=\"postgres://postgres:postgres@localhost/todo\" \\"
+    echo "    wasmedge target/wasm32-wasip1/release/fullstack-http.wasm"
+    echo ""
+    echo "  # Run MCP Inspector separately (Terminal 2)"
+    echo "  DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector"
+    echo ""
+    echo "  # Then in Inspector UI at http://localhost:6274:"
+    echo "  # - Select 'Streamable HTTP' transport"
+    echo "  # - Enter URL: http://${HOST}:8080/mcp"
+    echo "  # - Click Connect"
+    echo ""
 fi
+echo ""
+printf "${GREEN}Mode 2: Full Stack Testing (Everything in Docker)${NC}\n"
+echo "---------------------------------------------------"
+echo "Complete containerized deployment. Both PostgreSQL and MCP server"
+echo "run in Docker with automatic health checks and networking."
+echo ""
+echo "  # Start PostgreSQL + MCP server in Docker"
+echo "  docker-compose --profile full up"
+echo ""
+echo "  # This mode runs the server through docker-compose"
+echo "  # Note: Inspector integration in Docker mode requires additional setup"
+echo ""
+echo ""
+printf "${BLUE}STOPPING SERVICES:${NC}\n"
+echo "------------------"
+echo "  # Stop PostgreSQL only (Mode 1)"
+echo "  docker-compose down"
+echo ""
+echo "  # Stop full stack (Mode 2)"
+echo "  docker-compose --profile full down"
+echo ""
+echo "  # Stop and remove volumes (clean slate)"
+echo "  docker-compose --profile full down -v"
+echo ""

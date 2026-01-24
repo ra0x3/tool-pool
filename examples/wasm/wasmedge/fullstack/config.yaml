@@ -1,0 +1,128 @@
+# Configuration for WasmEdge Fullstack Example
+version: "1.0"
+
+metadata:
+  name: "fullstack-example"
+  description: "Fullstack WasmEdge MCP server example with multiple tools"
+  author: "mcpkit-rs"
+
+server:
+  name: "fullstack-server"
+  version: "0.1.0"
+  description: "A fullstack MCP server with data management tools"
+  bind: "0.0.0.0"
+  port: 3000
+  request_timeout: 60
+  debug: false
+  log_level: "info"
+
+transport:
+  transport_type: stdio
+  settings:
+    stdio:
+      buffer_size: 8192
+
+runtime:
+  runtime_type: wasmedge
+  wasm:
+    memory_pages: 1024  # 64MB
+    fuel: 10000000      # 10M fuel units
+  limits:
+    execution_time: "30s"
+    memory: "64Mi"
+    cpu: "1000m"
+
+mcp:
+  protocol_version: "2024-11-05"
+  capabilities:
+    - tools
+    - prompts
+    - resources
+  tools:
+    - name: "create_table"
+      description: "Create a new data table"
+      input_schema:
+        type: "object"
+        properties:
+          name:
+            type: "string"
+            description: "Table name"
+          columns:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                name:
+                  type: "string"
+                type:
+                  type: "string"
+                  enum: ["string", "number", "boolean", "date"]
+        required: ["name", "columns"]
+    - name: "query_table"
+      description: "Query data from tables"
+      input_schema:
+        type: "object"
+        properties:
+          table:
+            type: "string"
+            description: "Table name to query"
+          filter:
+            type: "object"
+            description: "Query filter conditions"
+        required: ["table"]
+    - name: "update_record"
+      description: "Update records in a table"
+      input_schema:
+        type: "object"
+        properties:
+          table:
+            type: "string"
+          id:
+            type: "string"
+          data:
+            type: "object"
+        required: ["table", "id", "data"]
+
+policy:
+  version: "1.0"
+  core:
+    tools:
+      allow:
+        - pattern: "create_table"
+        - pattern: "query_table"
+        - pattern: "update_record"
+      deny: []
+    network:
+      allow:
+        - pattern: "localhost:*"
+        - pattern: "127.0.0.1:*"
+      deny:
+        - pattern: "*"
+    storage:
+      allow:
+        - pattern: "/tmp/**"
+        - pattern: "/var/tmp/**"
+      deny:
+        - pattern: "/etc/**"
+        - pattern: "/usr/**"
+        - pattern: "/sys/**"
+    environment:
+      allow:
+        - key: "HOME"
+        - key: "USER"
+        - key: "TMPDIR"
+        - key: "WASMEDGE_*"
+      deny:
+        - key: "*_TOKEN"
+        - key: "*_KEY"
+        - key: "*_SECRET"
+  resources:
+    execution:
+      max_fuel: 10000000
+      timeout_seconds: 30
+    memory:
+      max_pages: 1024
+    capabilities:
+      - filesystem_read
+      - filesystem_write
+      - network_connect

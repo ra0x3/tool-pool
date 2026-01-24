@@ -136,9 +136,27 @@ where
     {
         let method = request.method().clone();
         let allowed_methods = match self.config.stateful_mode {
-            true => "GET, POST, DELETE",
-            false => "POST",
+            true => "GET, POST, DELETE, OPTIONS",
+            false => "POST, OPTIONS",
         };
+
+        // Handle OPTIONS for CORS preflight
+        if method == Method::OPTIONS {
+            let response = Response::builder()
+                .status(http::StatusCode::NO_CONTENT)
+                .header(ALLOW, allowed_methods)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", allowed_methods)
+                .header(
+                    "Access-Control-Allow-Headers",
+                    "Content-Type, Accept, X-Session-Id, X-Last-Event-Id",
+                )
+                .header("Access-Control-Max-Age", "3600")
+                .body(Full::new(Bytes::new()).boxed())
+                .expect("valid response");
+            return response;
+        }
+
         let result = match (method, self.config.stateful_mode) {
             (Method::POST, _) => self.handle_post(request).await,
             // if we're not in stateful mode, we don't support GET or DELETE because there is no session
@@ -259,18 +277,26 @@ where
         B: Body + Send + 'static,
         B::Error: Display,
     {
-        // check accept header
+        // check accept header - must accept at least text/event-stream
+        // also accept application/json for compatibility
         if !request
             .headers()
             .get(http::header::ACCEPT)
             .and_then(|header| header.to_str().ok())
             .is_some_and(|header| {
-                header.contains(JSON_MIME_TYPE) && header.contains(EVENT_STREAM_MIME_TYPE)
+                header.contains(EVENT_STREAM_MIME_TYPE)
+                    || header.contains(JSON_MIME_TYPE)
+                    || header.contains("*/*") // Accept all
             })
         {
             return Ok(Response::builder()
                 .status(http::StatusCode::NOT_ACCEPTABLE)
-                .body(Full::new(Bytes::from("Not Acceptable: Client must accept both application/json and text/event-stream")).boxed())
+                .body(
+                    Full::new(Bytes::from(
+                        "Not Acceptable: Client must accept text/event-stream",
+                    ))
+                    .boxed(),
+                )
                 .expect("valid response"));
         }
 

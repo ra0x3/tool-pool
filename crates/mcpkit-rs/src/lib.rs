@@ -160,6 +160,9 @@ pub use handler::client::ClientHandler;
 #[cfg(feature = "server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub use handler::server::ServerHandler;
+#[cfg(feature = "policy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "policy")))]
+pub use handler::server::policy::PolicyEnabledServer;
 #[cfg(feature = "server")]
 #[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub use handler::server::wrapper::Json;
@@ -178,6 +181,14 @@ pub mod handler;
 #[cfg_attr(docsrs, doc(cfg(feature = "server")))]
 pub mod task_manager;
 pub mod transport;
+
+#[cfg(feature = "config")]
+#[cfg_attr(docsrs, doc(cfg(feature = "config")))]
+pub mod config;
+
+#[cfg(feature = "wasm-tools")]
+#[cfg_attr(docsrs, doc(cfg(feature = "wasm-tools")))]
+pub mod wasm;
 
 // re-export
 #[cfg(all(feature = "macros", feature = "server"))]
