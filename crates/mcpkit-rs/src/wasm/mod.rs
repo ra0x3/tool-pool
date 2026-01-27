@@ -17,6 +17,8 @@ pub mod integration;
 #[cfg(feature = "wasm-tools")]
 pub mod loader;
 #[cfg(feature = "wasm-tools")]
+pub mod metering;
+#[cfg(feature = "wasm-tools")]
 pub mod runtime;
 
 // Re-export manifest types always
@@ -35,6 +37,11 @@ pub use manifest::{
     BundleContents, BundleDependencies, BundleEnvVar, BundleManifest, BundleMetadata,
     BundleVerifier, CredentialRequirement, CredentialType, ManifestLoader, ManifestSaver,
     McpToolInfo, RuntimeRequirements, ServerConfig, ServiceDependency, WasmToolManifest,
+};
+#[cfg(feature = "wasm-tools")]
+pub use metering::{
+    ComputeUnits, DisplayFormat, EnforcementMode, FuelMetrics, FuelUpdate, MemoryLimits,
+    MeteringConfig, MeteringMonitor, RuntimeMetering, SamplingStrategy,
 };
 #[cfg(feature = "wasm-tools")]
 pub use runtime::{WasmContext, WasmRuntime};

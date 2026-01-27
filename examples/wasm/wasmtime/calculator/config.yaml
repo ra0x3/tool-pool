@@ -84,10 +84,40 @@ runtime:
   type: wasmtime
   wasm:
     # module_path: ./target/wasm32-unknown-unknown/release/calculator.wasm
-    fuel: 10000000  # Limited fuel for calculations
+    fuel: 10000000  # Legacy fuel configuration (kept for compatibility)
     memory_pages: 16  # 1MB memory
     cache: true
     cache_dir: ./.wasm-cache
+
+    # Modern metering configuration
+    metering:
+      enabled: true
+      max_compute_units: 10_000_000   # 10M units for calculations
+      display_format: minimal         # Simple output for calculator
+
+      # Memory limits with defense-in-depth
+      memory_limits:
+        max_memory: "32Mi"            # 32 MiB max
+        soft_limit: "24Mi"            # Warn at 24 MiB
+        max_tables: 5                 # Limited tables
+        max_instances: 1              # Single instance
+
+      # No real-time monitoring for simple calculator
+      enable_monitoring: false
+
+      # Strict enforcement for security
+      enforcement: strict
+
+      # Conservative limits for calculator
+      limits:
+        soft_limit: 8_000_000         # Warn at 8M units
+        hard_limit: 10_000_000        # Stop at 10M units
+
+      # Per-operation quotas
+      quotas:
+        per_request: 100_000          # 100K per calculation
+        per_minute: 10_000_000        # 10M per minute
+        per_hour: 100_000_000         # 100M per hour
   limits:
     cpu: "100m"
     memory: "32Mi"

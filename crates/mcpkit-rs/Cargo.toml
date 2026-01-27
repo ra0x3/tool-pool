@@ -148,10 +148,16 @@ tracing-subscriber = { version = "0.3", features = [
   "std",
   "fmt",
 ] }
+wat = "1.0"
 [[test]]
 name = "test_tool_macros"
 required-features = ["server", "client"]
 path = "tests/test_tool_macros.rs"
+
+[[test]]
+name = "test_metering_integration"
+required-features = ["wasm-tools"]
+path = "tests/test_metering_integration.rs"
 
 [[test]]
 name = "test_with_python"
