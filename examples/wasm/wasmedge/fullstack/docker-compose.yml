@@ -46,7 +46,7 @@ services:
     networks:
       - fullstack-net
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ./config.stdio.yaml:/app/config.stdio.yaml:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6274"]
       interval: 10s
@@ -75,7 +75,7 @@ services:
     networks:
       - fullstack-net
     volumes:
-      - ./config.yaml:/app/config.yaml:ro
+      - ./config.http.yaml:/app/config.http.yaml:ro
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
       interval: 5s

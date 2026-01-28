@@ -253,7 +253,7 @@ echo "${GREEN}✓ Found HTTP WASM file: $HTTP_WASM_FILE${NC}"
 echo ""
 
 echo "${CYAN}Starting HTTP server...${NC}"
-DATABASE_URL="postgres://postgres:postgres@localhost/testdb" HOST="0.0.0.0" PORT="8080" wasmedge "$HTTP_WASM_FILE" > /tmp/http_server.log 2>&1 &
+DATABASE_URL="postgres://postgres:postgres@localhost/testdb" HOST="0.0.0.0" PORT="8080" wasmedge --dir .:. "$HTTP_WASM_FILE" > /tmp/http_server.log 2>&1 &
 HTTP_PID=$!
 sleep 3
 if ! ps -p $HTTP_PID > /dev/null; then

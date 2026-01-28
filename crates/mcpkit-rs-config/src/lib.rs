@@ -89,7 +89,7 @@ pub struct ServerConfig {
 }
 
 /// Transport configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct TransportConfig {
     /// Transport type
@@ -181,6 +181,7 @@ pub struct RuntimeConfig {
 pub enum RuntimeType {
     Native,
     Wasmtime,
+    #[serde(rename = "wasmedge")]
     WasmEdge,
 }
 
@@ -268,16 +269,150 @@ pub struct ResourceConfig {
 
 /// MCP capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct McpCapabilities {
-    pub tools: Option<bool>,
-    pub prompts: Option<bool>,
-    pub resources: Option<bool>,
-    pub logging: Option<bool>,
-    pub experimental: Option<HashMap<String, bool>>,
+#[serde(untagged)]
+pub enum McpCapabilities {
+    List(Vec<String>),
+    Struct {
+        tools: Option<bool>,
+        prompts: Option<bool>,
+        resources: Option<bool>,
+        logging: Option<bool>,
+        experimental: Option<HashMap<String, bool>>,
+    },
+}
+
+impl McpCapabilities {
+    pub fn has_tools(&self) -> bool {
+        match self {
+            McpCapabilities::List(caps) => caps.contains(&"tools".to_string()),
+            McpCapabilities::Struct { tools, .. } => tools.unwrap_or(false),
+        }
+    }
+
+    pub fn has_prompts(&self) -> bool {
+        match self {
+            McpCapabilities::List(caps) => caps.contains(&"prompts".to_string()),
+            McpCapabilities::Struct { prompts, .. } => prompts.unwrap_or(false),
+        }
+    }
+
+    pub fn has_resources(&self) -> bool {
+        match self {
+            McpCapabilities::List(caps) => caps.contains(&"resources".to_string()),
+            McpCapabilities::Struct { resources, .. } => resources.unwrap_or(false),
+        }
+    }
+
+    pub fn has_logging(&self) -> bool {
+        match self {
+            McpCapabilities::List(caps) => caps.contains(&"logging".to_string()),
+            McpCapabilities::Struct { logging, .. } => logging.unwrap_or(false),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests;
+
+// Custom deserializer for TransportConfig to properly match settings with transport type
+impl<'de> Deserialize<'de> for TransportConfig {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use std::fmt;
+
+        use serde::de::{self, MapAccess, Visitor};
+
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "snake_case")]
+        enum Field {
+            #[serde(rename = "type")]
+            Type,
+            Settings,
+        }
+
+        struct TransportConfigVisitor;
+
+        impl<'de> Visitor<'de> for TransportConfigVisitor {
+            type Value = TransportConfig;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct TransportConfig")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> std::result::Result<TransportConfig, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut transport_type: Option<TransportType> = None;
+                let mut settings_value: Option<serde_json::Value> = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Type => {
+                            if transport_type.is_some() {
+                                return Err(de::Error::duplicate_field("type"));
+                            }
+                            transport_type = Some(map.next_value()?);
+                        }
+                        Field::Settings => {
+                            if settings_value.is_some() {
+                                return Err(de::Error::duplicate_field("settings"));
+                            }
+                            settings_value = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                let transport_type =
+                    transport_type.ok_or_else(|| de::Error::missing_field("type"))?;
+                let settings_value =
+                    settings_value.ok_or_else(|| de::Error::missing_field("settings"))?;
+
+                // Deserialize settings based on transport type
+                let settings = match transport_type {
+                    TransportType::Stdio => {
+                        let stdio_settings: StdioSettings = serde_json::from_value(settings_value)
+                            .map_err(|e| {
+                                de::Error::custom(format!("Invalid stdio settings: {}", e))
+                            })?;
+                        TransportSettings::Stdio(stdio_settings)
+                    }
+                    TransportType::Http => {
+                        let http_settings: HttpSettings = serde_json::from_value(settings_value)
+                            .map_err(|e| {
+                                de::Error::custom(format!("Invalid HTTP settings: {}", e))
+                            })?;
+                        TransportSettings::Http(http_settings)
+                    }
+                    TransportType::WebSocket => {
+                        let ws_settings: WebSocketSettings = serde_json::from_value(settings_value)
+                            .map_err(|e| {
+                                de::Error::custom(format!("Invalid WebSocket settings: {}", e))
+                            })?;
+                        TransportSettings::WebSocket(ws_settings)
+                    }
+                    TransportType::Grpc => {
+                        let grpc_settings: GrpcSettings = serde_json::from_value(settings_value)
+                            .map_err(|e| {
+                                de::Error::custom(format!("Invalid gRPC settings: {}", e))
+                            })?;
+                        TransportSettings::Grpc(grpc_settings)
+                    }
+                };
+
+                Ok(TransportConfig {
+                    transport_type,
+                    settings,
+                })
+            }
+        }
+
+        const FIELDS: &[&str] = &["type", "settings"];
+        deserializer.deserialize_struct("TransportConfig", FIELDS, TransportConfigVisitor)
+    }
+}
 
 impl Config {
     /// Load configuration from a YAML file

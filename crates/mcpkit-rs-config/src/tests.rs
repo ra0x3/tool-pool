@@ -4,8 +4,231 @@ mod tests {
 
     use tempfile::TempDir;
 
-    use super::*;
     use crate::*;
+
+    // Complex real-world configuration example with stdio transport
+    const COMPLEX_CONFIG_YAML: &str = r#"# Configuration for WasmEdge Fullstack Example
+version: "1.0"
+
+metadata:
+  name: "fullstack-example"
+  description: "Fullstack WasmEdge MCP server example with multiple tools"
+  author: "mcpkit-rs"
+
+server:
+  name: "fullstack-server"
+  version: "0.1.0"
+  description: "A fullstack MCP server with data management tools"
+  bind: "0.0.0.0"
+  port: 3000
+  request_timeout: 60
+  debug: false
+  log_level: "info"
+
+transport:
+  type: stdio
+  settings:
+    stdio:
+      buffer_size: 8192
+
+runtime:
+  type: wasmedge
+  wasm:
+    memory_pages: 1024  # 64MB
+    fuel: 10000000      # Legacy configuration (kept for compatibility)
+
+    # Modern metering configuration for WasmEdge
+    metering:
+      enabled: true
+      max_compute_units: 100_000_000  # 100M units (gas in WasmEdge)
+      display_format: detailed         # Show detailed metrics for development
+
+      # Memory limits with defense-in-depth
+      memory_limits:
+        max_memory: "256Mi"           # 256 MiB for fullstack operations
+        soft_limit: "200Mi"           # Warn at 200 MiB
+        max_tables: 20                # More tables for complex app
+        max_instances: 10             # Support multiple instances
+
+      # Enable monitoring for development
+      enable_monitoring: true
+
+      # Sampling configuration
+      sampling:
+        unit_threshold: 100_000       # Sample every 100K units
+        time_threshold_ms: 100        # Sample every 100ms
+        adaptive: true                # Adapt to workload
+
+      # Warning mode for development
+      enforcement:
+        warning:
+          threshold: 0.85             # Warn at 85% usage
+
+      # Generous limits for fullstack app
+      limits:
+        soft_limit: 85_000_000        # Warn at 85M units
+        hard_limit: 100_000_000       # Stop at 100M units
+
+      # Fullstack operation quotas
+      quotas:
+        per_request: 10_000_000       # 10M per request
+        per_minute: 500_000_000       # 500M per minute
+        per_hour: 10_000_000_000      # 10B per hour
+
+  limits:
+    execution_time: "30s"
+    memory: "256Mi"     # Updated to match metering config
+    cpu: "1000m"
+
+mcp:
+  protocol_version: "2024-11-05"
+  capabilities:
+    - tools
+    - prompts
+    - resources
+    - logging
+
+policy:
+  version: "1.0"
+  core:
+    tools:
+      allow:
+        - name: "test_connection"
+        - name: "fetch_todos"
+        - name: "create_todo"
+        - name: "update_todo"
+        - name: "delete_todo"
+        - name: "batch_process"
+        - name: "search_todos"
+        - name: "db_stats"
+        - name: "read_wal"
+      deny: []
+    network:
+      allow:
+        - host: "localhost:*"
+        - host: "127.0.0.1:*"
+      deny:
+        - host: "*"
+    storage:
+      allow:
+        - uri: "/tmp/**"
+          access: ["read", "write"]
+        - uri: "/var/tmp/**"
+          access: ["read", "write"]
+      deny:
+        - uri: "/etc/**"
+          access: ["read", "write"]
+        - uri: "/usr/**"
+          access: ["read", "write"]
+        - uri: "/sys/**"
+          access: ["read", "write"]
+    environment:
+      allow:
+        - key: "HOME"
+        - key: "USER"
+        - key: "TMPDIR"
+        - key: "WASMEDGE_*"
+      deny:
+        - key: "*_TOKEN"
+        - key: "*_KEY"
+        - key: "*_SECRET"
+  resources:
+    execution:
+      max_fuel: 10000000
+      timeout_seconds: 30
+    memory:
+      max_pages: 1024
+    capabilities:
+      - filesystem_read
+      - filesystem_write
+      - network_connect
+"#;
+
+    // HTTP transport version of the complex config
+    const COMPLEX_HTTP_CONFIG_YAML: &str = r#"# Configuration for WasmEdge Fullstack Example
+version: "1.0"
+
+metadata:
+  name: "fullstack-example"
+  description: "Fullstack WasmEdge MCP server example with multiple tools"
+  author: "mcpkit-rs"
+
+server:
+  name: "fullstack-server"
+  version: "0.1.0"
+  description: "A fullstack MCP server with data management tools"
+  bind: "0.0.0.0"
+  port: 3000
+  request_timeout: 60
+  debug: false
+  log_level: "info"
+
+transport:
+  type: http
+  settings:
+    cors_enabled: true
+    max_body_size: 10485760  # 10MB
+    compression: true
+
+runtime:
+  type: wasmedge
+  wasm:
+    memory_pages: 1024  # 64MB
+    fuel: 10000000      # Legacy configuration (kept for compatibility)
+
+mcp:
+  protocol_version: "2024-11-05"
+  capabilities:
+    - tools
+    - prompts
+    - resources
+    - logging
+
+policy:
+  version: "1.0"
+  core:
+    tools:
+      allow:
+        - name: "test_connection"
+        - name: "fetch_todos"
+      deny: []
+"#;
+
+    #[test]
+    fn test_complex_http_config() {
+        // Test the HTTP transport version
+        let config = Config::from_yaml(COMPLEX_HTTP_CONFIG_YAML).unwrap();
+        assert_eq!(config.version, "1.0");
+        assert_eq!(config.server.name, "fullstack-server");
+        assert_eq!(config.transport.transport_type, TransportType::Http);
+    }
+
+    #[test]
+    fn test_complex_real_world_config() {
+        // Test a complex real-world configuration
+        let config = Config::from_yaml(COMPLEX_CONFIG_YAML).unwrap();
+        assert_eq!(config.version, "1.0");
+        assert_eq!(config.server.name, "fullstack-server");
+        assert_eq!(config.server.port, 3000);
+        assert_eq!(config.runtime.runtime_type, RuntimeType::WasmEdge);
+
+        // Verify policy loaded correctly
+        assert!(config.policy.is_some());
+        let policy = config.policy.unwrap();
+        assert_eq!(policy.version, "1.0");
+
+        // Verify capabilities as list
+        assert!(config.mcp.capabilities.is_some());
+        match config.mcp.capabilities.unwrap() {
+            McpCapabilities::List(caps) => {
+                assert!(caps.contains(&"tools".to_string()));
+                assert!(caps.contains(&"prompts".to_string()));
+                assert!(caps.contains(&"resources".to_string()));
+                assert!(caps.contains(&"logging".to_string()));
+            }
+            _ => panic!("Expected capabilities to be a list"),
+        }
+    }
 
     #[test]
     fn test_minimal_config() {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fullstack::FullStackServer;
 use mcpkit_rs::{PolicyEnabledServer, ServiceExt};
-use mcpkit_rs_policy::Policy;
+use mcpkit_rs_config::Config;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
@@ -15,29 +15,13 @@ async fn main() -> Result<()> {
 
     std::env::set_var("STDIO_MODE", "true");
 
-    // Create base server
-    let base_server = FullStackServer::new().await;
+    // Load stdio-specific config from file - panic if not found
+    let config = Config::from_yaml_file("config.stdio.yaml")?;
+    let policy = config.policy.expect("Policy must be defined in config.stdio.yaml");
 
-    // Create a simple policy that only allows specific tools
-    let policy_yaml = r#"
-version: "1.0"
-tools:
-  allow:
-    - test_connection
-    - fetch_todos
-    - create_todo
-    - update_todo
-    - delete_todo
-    - batch_process
-    - search_todos
-    - db_stats
-    - read_wal
-  deny: []
-"#;
-
-    let policy = Policy::from_yaml(policy_yaml).expect("Failed to parse policy");
-    let server = PolicyEnabledServer::with_policy(base_server, policy)
-        .expect("Failed to create policy-enabled server");
+    // Create base server using sync version like http.rs
+    let base_server = FullStackServer::new_sync();
+    let server = PolicyEnabledServer::with_policy(base_server, policy)?;
 
     use fullstack::wasi_io;
     match server.serve(wasi_io()).await {

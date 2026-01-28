@@ -22,14 +22,14 @@ $ ./build.sh                       # Build stdio transport (default)
 $ ./build.sh -t http              # Or build HTTP transport
 $ ./build.sh -t both              # Or build both
 
-# Run stdio server
+# Run stdio server (uses config.stdio.yaml)
 $ DATABASE_URL="postgres://postgres:postgres@localhost/todo" \
-  npx @modelcontextprotocol/inspector wasmedge run \
+  npx @modelcontextprotocol/inspector wasmedge --dir .:. run \
   target/wasm32-wasip1/release/fullstack-stdio.wasm
 
-# Or run HTTP server
+# Or run HTTP server (uses config.http.yaml)
 $ DATABASE_URL="postgres://postgres:postgres@localhost/todo" \
-  wasmedge run target/wasm32-wasip1/release/fullstack-http.wasm
+  wasmedge --dir .:. run target/wasm32-wasip1/release/fullstack-http.wasm
 # Access at http://127.0.0.1:8080/mcp
 ```
 

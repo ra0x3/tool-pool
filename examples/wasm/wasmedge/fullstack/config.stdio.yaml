@@ -17,13 +17,13 @@ server:
   log_level: "info"
 
 transport:
-  transport_type: stdio
+  type: stdio
   settings:
     stdio:
       buffer_size: 8192
 
 runtime:
-  runtime_type: wasmedge
+  type: wasmedge
   wasm:
     memory_pages: 1024  # 64MB
     fuel: 10000000      # Legacy configuration (kept for compatibility)
@@ -77,74 +77,43 @@ mcp:
     - tools
     - prompts
     - resources
-  tools:
-    - name: "create_table"
-      description: "Create a new data table"
-      input_schema:
-        type: "object"
-        properties:
-          name:
-            type: "string"
-            description: "Table name"
-          columns:
-            type: "array"
-            items:
-              type: "object"
-              properties:
-                name:
-                  type: "string"
-                type:
-                  type: "string"
-                  enum: ["string", "number", "boolean", "date"]
-        required: ["name", "columns"]
-    - name: "query_table"
-      description: "Query data from tables"
-      input_schema:
-        type: "object"
-        properties:
-          table:
-            type: "string"
-            description: "Table name to query"
-          filter:
-            type: "object"
-            description: "Query filter conditions"
-        required: ["table"]
-    - name: "update_record"
-      description: "Update records in a table"
-      input_schema:
-        type: "object"
-        properties:
-          table:
-            type: "string"
-          id:
-            type: "string"
-          data:
-            type: "object"
-        required: ["table", "id", "data"]
+    - logging
 
 policy:
   version: "1.0"
+  # Tools configuration should be at root level, not under core
+  tools:
+    allow:
+      - name: "test_connection"
+      - name: "fetch_todos"
+      - name: "create_todo"
+      - name: "update_todo"
+      - name: "delete_todo"
+      - name: "batch_process"
+      - name: "search_todos"
+      - name: "db_stats"
+      - name: "read_wal"
+    deny: []
   core:
-    tools:
-      allow:
-        - pattern: "create_table"
-        - pattern: "query_table"
-        - pattern: "update_record"
-      deny: []
     network:
       allow:
-        - pattern: "localhost:*"
-        - pattern: "127.0.0.1:*"
+        - host: "localhost:*"
+        - host: "127.0.0.1:*"
       deny:
-        - pattern: "*"
+        - host: "*"
     storage:
       allow:
-        - pattern: "/tmp/**"
-        - pattern: "/var/tmp/**"
+        - uri: "/tmp/**"
+          access: ["read", "write"]
+        - uri: "/var/tmp/**"
+          access: ["read", "write"]
       deny:
-        - pattern: "/etc/**"
-        - pattern: "/usr/**"
-        - pattern: "/sys/**"
+        - uri: "/etc/**"
+          access: ["read", "write"]
+        - uri: "/usr/**"
+          access: ["read", "write"]
+        - uri: "/sys/**"
+          access: ["read", "write"]
     environment:
       allow:
         - key: "HOME"

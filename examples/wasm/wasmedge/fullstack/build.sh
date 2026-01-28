@@ -59,7 +59,7 @@ ${BLUE}Running the binaries:${NC}
     wasmedge target/wasm32-wasip1/release/fullstack-http.wasm
 
   # Terminal 2: Run MCP Inspector
-  DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
+  npx @modelcontextprotocol/inspector
 
   # Then connect via Inspector UI at http://localhost:6274
   # Select 'Streamable HTTP' and enter URL: http://${HOST}:8080/mcp
@@ -161,18 +161,20 @@ echo "  docker-compose up -d"
 echo ""
 if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "stdio" ]; then
     echo "  # Run stdio server with MCP Inspector (all-in-one)"
+    echo "  # Uses config.stdio.yaml for stdio transport"
     echo "  DATABASE_URL=\"postgres://postgres:postgres@localhost/todo\" \\"
-    echo "    npx @modelcontextprotocol/inspector wasmedge run target/wasm32-wasip1/release/fullstack-stdio.wasm"
+    echo "    npx @modelcontextprotocol/inspector wasmedge --dir .:. run target/wasm32-wasip1/release/fullstack-stdio.wasm"
     echo "  # Access Inspector UI at: http://localhost:6274"
     echo ""
 fi
 if [ "$TRANSPORT" = "both" ] || [ "$TRANSPORT" = "http" ]; then
     echo "  # Run HTTP server (Terminal 1)"
+    echo "  # Uses config.http.yaml for HTTP transport"
     echo "  HOST=\"${HOST}\" PORT=\"8080\" DATABASE_URL=\"postgres://postgres:postgres@localhost/todo\" \\"
-    echo "    wasmedge target/wasm32-wasip1/release/fullstack-http.wasm"
+    echo "    wasmedge --dir .:. target/wasm32-wasip1/release/fullstack-http.wasm"
     echo ""
     echo "  # Run MCP Inspector separately (Terminal 2)"
-    echo "  DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector"
+    echo "  npx @modelcontextprotocol/inspector"
     echo ""
     echo "  # Then in Inspector UI at http://localhost:6274:"
     echo "  # - Select 'Streamable HTTP' transport"
