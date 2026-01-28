@@ -8,7 +8,7 @@ use mcpkit_rs::{
     },
     PolicyEnabledServer,
 };
-use mcpkit_rs_policy::Policy;
+use mcpkit_rs_config::Config;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -36,24 +36,9 @@ async fn main() -> Result<()> {
 
     let ct = tokio_util::sync::CancellationToken::new();
 
-    // Create a policy for enforcement
-    let policy_yaml = r#"
-version: "1.0"
-tools:
-  allow:
-    - test_connection
-    - fetch_todos
-    - create_todo
-    - update_todo
-    - delete_todo
-    - batch_process
-    - search_todos
-    - db_stats
-    - read_wal
-  deny: []
-"#;
-
-    let policy = Policy::from_yaml(policy_yaml)?;
+    // Load HTTP-specific config from file - panic if not found
+    let config = Config::from_yaml_file("config.http.yaml")?;
+    let policy = config.policy.expect("Policy must be defined in config.http.yaml");
 
     let service = StreamableHttpService::new(
         move || {
@@ -61,7 +46,7 @@ tools:
             // The database connection will be attempted on first use
             let base_server = FullStackServer::new_sync();
             let server = PolicyEnabledServer::with_policy(base_server, policy.clone())
-                .map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err.to_string()))?;
+                .map_err(|err| std::io::Error::other(err.to_string()))?;
             Ok(server)
         },
         LocalSessionManager::default().into(),

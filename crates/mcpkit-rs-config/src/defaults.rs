@@ -60,12 +60,11 @@ pub fn default_mcp_config() -> McpConfig {
         tools: None,
         prompts: None,
         resources: None,
-        capabilities: Some(McpCapabilities {
-            tools: Some(true),
-            prompts: Some(true),
-            resources: Some(true),
-            logging: Some(true),
-            experimental: None,
-        }),
+        capabilities: Some(McpCapabilities::List(vec![
+            "tools".to_string(),
+            "prompts".to_string(),
+            "resources".to_string(),
+            "logging".to_string(),
+        ])),
     }
 }

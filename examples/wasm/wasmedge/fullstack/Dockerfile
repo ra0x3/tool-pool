@@ -53,7 +53,9 @@ RUN npm install -g @modelcontextprotocol/inspector
 # Copy the built WASM modules (both stdio and http versions)
 COPY --from=builder /app/examples/wasm/wasmedge/fullstack/target/wasm32-wasip1/release/fullstack-stdio.wasm /app/
 COPY --from=builder /app/examples/wasm/wasmedge/fullstack/target/wasm32-wasip1/release/fullstack-http.wasm /app/
-COPY --from=builder /app/examples/wasm/wasmedge/fullstack/config.yaml /app/
+# Copy both config files for respective transports
+COPY --from=builder /app/examples/wasm/wasmedge/fullstack/config.stdio.yaml /app/
+COPY --from=builder /app/examples/wasm/wasmedge/fullstack/config.http.yaml /app/
 
 # Set environment variables
 ENV PATH="/root/.wasmedge/bin:${PATH}"
@@ -91,9 +93,11 @@ echo "  • test_connection - Test DB connection"\n\
 echo ""\n\
 echo "Starting MCP server with Inspector..."\n\
 echo "Note: Inspector will be available at http://127.0.0.1:6274 from your host machine"\n\
+echo "Using config.stdio.yaml for stdio transport"\n\
 export PATH="/root/.wasmedge/bin:${PATH}"\n\
 export HOST="0.0.0.0"\n\
-exec env DATABASE_URL="${DATABASE_URL}" DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector wasmedge run /app/fullstack-stdio.wasm\n\
+cd /app\n\
+exec env DATABASE_URL="${DATABASE_URL}" npx @modelcontextprotocol/inspector wasmedge --dir .:. run fullstack-stdio.wasm\n\
 ' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 WORKDIR /app
@@ -111,8 +115,10 @@ PGPASSWORD=postgres psql -h postgres -U postgres -d todo -c "SELECT 1" > /dev/nu
 echo "Database connection verified!"\n\
 \n\
 echo "Starting MCP HTTP server for testing..."\n\
+echo "Using config.http.yaml for HTTP transport"\n\
 export PATH="/root/.wasmedge/bin:${PATH}"\n\
-exec env DATABASE_URL="${DATABASE_URL}" HOST="0.0.0.0" PORT="8080" wasmedge run /app/fullstack-http.wasm\n\
+cd /app\n\
+exec env DATABASE_URL="${DATABASE_URL}" HOST="0.0.0.0" PORT="8080" wasmedge --dir .:. run fullstack-http.wasm\n\
 ' > /app/entrypoint-test.sh && chmod +x /app/entrypoint-test.sh
 
 # Inspector runs on ports 6274 (UI) and 6277 (proxy), HTTP server on 8080

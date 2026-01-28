@@ -27,6 +27,21 @@ This fork enables portable MCP tools through WebAssembly, supporting multiple ru
 - **WASI (wasm32-wasip2)**: Standard WebAssembly System Interface for general-purpose tools
 - **WasmEdge**: Extended runtime with PostgreSQL and HTTP client support for full-stack applications
 
+### Runtime Functionality Comparison
+
+| Problem | Wasmtime | WasmEdge |
+|---------|----------|----------|
+| Outbound TCP/HTTP | ✗ Pre-opened FDs only | ✓ Full sockets |
+| Inbound TCP (servers) | ⚠ Awkward | ✓ Native |
+| Database connections | ✗ | ✓ Postgres, MySQL |
+| LLM inference (GGML) | ✗ | ✓ |
+| Whisper/audio | ✗ | ✓ |
+| TensorFlow/PyTorch | ⚠ OpenVINO only | ✓ Multiple backends |
+| Docker Desktop | ✓ | ✓ (ships built-in) |
+| Edge K8s (KubeEdge, etc.) | ⚠ | ✓ First-class |
+| Plugin system | ✗ | ✓ |
+| TLS built-in | ⚠ | ✓ |
+
 ### Why WebAssembly?
 
 Current MCP ecosystem suffers from massive duplication - everyone writes the same tools. These tools are:
@@ -41,7 +56,46 @@ WebAssembly provides:
 - **Reproducibility**: Same tool version = same behavior
 - **Distribution**: Share tools as binaries, not services
 
-See [Tool Pool Technical Design](docs/TOOL_POOL_TECH_DESIGN_v1.md) for details.
+
+## Comparison with Wassette
+
+### mcpkit-rs vs Wassette Feature Comparison
+
+| Feature | mcpkit-rs | Wassette |
+|---------|-----------|----------|
+| **Primary Focus** | Fast development with more features out-of-box | Enterprise-focused with minimal feature set |
+| **Architecture** | MCP SDK that compiles to WASM | Bridge between WASM Components and MCP |
+| **Language** | Rust | Rust |
+| **MCP Implementation** | Full MCP SDK (client/server) | MCP server only |
+| **WASM Runtime Support** | Wasmtime + WasmEdge | Wasmtime only |
+| **Component Model** | Direct WASM compilation | WASM Components (WIT) |
+| **Database Support** | ✓ (via WasmEdge) | ✗ |
+| **HTTP Client** | ✓ (via WasmEdge) | ✗ (pre-opened FDs only) |
+| **LLM/ML Support** | ✓ (via WasmEdge) | ✗ |
+| **Permission System** | Fine-grained config.yaml | Fine-grained policy.yaml |
+| **OCI Registry Support** | ✗ | ✓ |
+| **Security Model** | Runtime sandboxing | Capability-based + interactive |
+| **Network Hosting** | ✗ | ✓ (planned) |
+| **Development Model** | Write MCP tools in any WASM language | Write generic WASM Components |
+| **Tool Distribution** | Binary/source | OCI registry |
+| **Zero Dependencies** | ✗ (requires WASI runtime) | ✗ (requires WASI runtime) |
+| **Supported Languages** | JavaScript, Go, Python, Rust | JS, Python, Rust, Go |
+
+### When to Use Which?
+
+**Choose mcpkit-rs when:**
+- Building MCP tools that need database or HTTP access
+- Requiring ML/AI inference capabilities in tools
+- Needing both MCP client and server functionality
+- Wanting direct control over MCP implementation
+- Needing flexibility to choose between multiple WASM runtimes
+
+**Choose Wassette when:**
+- Building language-agnostic WASM Components
+- Requiring fine-grained security policies
+- Distributing tools via OCI registries
+- Needing network-hosted MCP servers
+- Working with existing WASM Components
 
 ## Installation
 
@@ -95,7 +149,6 @@ See the [examples directory](examples/) for working implementations.
 
 - [MCP Specification](https://modelcontextprotocol.io/specification/2025-11-25)
 - [Original Rust SDK](https://github.com/modelcontextprotocol/rust-sdk)
-- [Tool Pool Design](docs/TOOL_POOL_TECH_DESIGN_v1.md)
 - [WASI](https://wasi.dev/)
 
 ## Development
