@@ -55,7 +55,7 @@ impl WasmtimeBackend {
         linker: &mut wasmtime::Linker<PolicyState>,
         policy: Arc<crate::compiled::CompiledPolicy>,
     ) -> Result<()> {
-        use wasmtime::{Caller, Linker};
+        use wasmtime::Caller;
 
         let policy_clone = policy.clone();
         linker.func_wrap(

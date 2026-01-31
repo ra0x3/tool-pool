@@ -28,6 +28,12 @@ runtime:
     memory_pages: 1024  # 64MB
     fuel: 10000000      # Legacy configuration (kept for compatibility)
 
+    # Environment variables that will be available to the WASM module
+    # The DATABASE_URL is required for PostgreSQL connection
+    env_vars:
+      - name: DATABASE_URL
+        value: "${DATABASE_URL}"  # Will be resolved from host environment
+
     # Modern metering configuration for WasmEdge
     metering:
       enabled: true
@@ -116,6 +122,7 @@ policy:
           access: ["read", "write"]
     environment:
       allow:
+        - key: "DATABASE_URL"  # Required for PostgreSQL connection
         - key: "HOME"
         - key: "USER"
         - key: "TMPDIR"
@@ -124,6 +131,7 @@ policy:
         - key: "*_TOKEN"
         - key: "*_KEY"
         - key: "*_SECRET"
+        - key: "*_PASSWORD"  # But DATABASE_URL is allowed despite containing password
   resources:
     execution:
       max_fuel: 10000000
@@ -134,3 +142,43 @@ policy:
       - filesystem_read
       - filesystem_write
       - network_connect
+
+# Distribution configuration for OCI registry publishing
+distribution:
+  # OCI registry URI for fullstack bundle
+  registry: "ghcr.io/ra0x3/mcpkit-fullstack"
+
+  # Version
+  version: "0.1.0"
+
+  # Tags to apply
+  tags:
+    - "latest"
+    - "v0.1.0"
+    - "wasmedge"
+
+  # Bundle metadata
+  metadata:
+    authors:
+      - "mcpkit-rs contributors"
+    license: "Apache-2.0"
+    repository: "https://github.com/ra0x3/mcpkit-rs"
+    keywords:
+      - "fullstack"
+      - "wasm"
+      - "wasmedge"
+      - "mcp"
+      - "database"
+    homepage: "https://github.com/ra0x3/mcpkit-rs"
+    documentation: "https://github.com/ra0x3/mcpkit-rs/tree/main/examples/wasm/wasmedge/fullstack"
+
+  # Files to include in bundle
+  include:
+    - "fullstack.wasm"
+    - "config.stdio.yaml"
+    - "config.http.yaml"
+
+  # Registry authentication
+  auth:
+    username: "${GITHUB_USER}"
+    password: "${GITHUB_TOKEN}"

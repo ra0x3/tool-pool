@@ -23,6 +23,7 @@ elicitation = []
 wasm-tools = ["dep:wasmtime", "dep:wasmtime-wasi"]
 config = ["dep:mcpkit-rs-config", "dep:mcpkit-rs-policy"]
 policy = ["dep:mcpkit-rs-policy"]
+distribution = ["dep:reqwest", "dep:hex", "dep:dirs", "dep:tempfile", "dep:mcpkit-rs-config"]
 
 # reqwest http client
 __reqwest = ["dep:reqwest"]
@@ -77,7 +78,9 @@ axum = { version = "0.8", features = [], optional = true }
 # for image encoding
 base64 = { version = "0.22", optional = true }
 bytes = { version = "1", optional = true }
+dirs = { version = "5.0", optional = true }
 futures = "0.3"
+hex = { version = "0.4", optional = true }
 
 http = { version = "1", optional = true }
 http-body = { version = "1", optional = true }
@@ -98,6 +101,7 @@ rand = { version = "0.9", optional = true }
 reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "stream",
+  "rustls-tls",
 ], optional = true }
 
 # for auto generate schema
@@ -107,6 +111,7 @@ serde_json = "1.0"
 sha2 = "0.10"
 
 sse-stream = { version = "0.2", optional = true }
+tempfile = { version = "3.8", optional = true }
 thiserror = "2"
 tokio = { version = "=1.36.0", features = ["sync", "macros", "rt", "time"] }
 tokio-stream = { version = "=0.1.11", optional = true }
@@ -140,6 +145,7 @@ chrono = { version = "0.4.38", features = ["serde"] }
 anyhow = "1.0"
 async-trait = "0.1"
 schemars = { version = "1.1.0", features = ["chrono04"] }
+serde_yaml = "0.9"
 tokio = { version = "=1.36.0", features = ["full"] }
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",

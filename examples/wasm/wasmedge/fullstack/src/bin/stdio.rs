@@ -17,7 +17,9 @@ async fn main() -> Result<()> {
 
     // Load stdio-specific config from file - panic if not found
     let config = Config::from_yaml_file("config.stdio.yaml")?;
-    let policy = config.policy.expect("Policy must be defined in config.stdio.yaml");
+    let policy = config
+        .policy
+        .expect("Policy must be defined in config.stdio.yaml");
 
     // Create base server using sync version like http.rs
     let base_server = FullStackServer::new_sync();

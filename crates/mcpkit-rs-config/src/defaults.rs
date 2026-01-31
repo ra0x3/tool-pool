@@ -14,6 +14,7 @@ pub fn default_config() -> Config {
         policy: None,
         runtime: default_runtime_config(),
         mcp: default_mcp_config(),
+        distribution: None,
         extensions: HashMap::new(),
     }
 }

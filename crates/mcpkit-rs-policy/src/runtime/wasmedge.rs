@@ -12,7 +12,7 @@ use crate::{
 /// WasmEdge backend for policy enforcement
 pub struct WasmEdgeBackend {
     #[cfg(feature = "wasmedge-backend")]
-    vm: Option<wasmedge_sdk::Vm>,
+    vm: Option<Arc<dyn std::any::Any + Send + Sync>>,
     policy_state: Arc<PolicyState>,
 }
 

@@ -38,7 +38,9 @@ async fn main() -> Result<()> {
 
     // Load HTTP-specific config from file - panic if not found
     let config = Config::from_yaml_file("config.http.yaml")?;
-    let policy = config.policy.expect("Policy must be defined in config.http.yaml");
+    let policy = config
+        .policy
+        .expect("Policy must be defined in config.http.yaml");
 
     let service = StreamableHttpService::new(
         move || {

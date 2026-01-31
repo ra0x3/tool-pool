@@ -190,6 +190,10 @@ pub mod config;
 #[cfg_attr(docsrs, doc(cfg(feature = "wasm-tools")))]
 pub mod wasm;
 
+#[cfg(feature = "distribution")]
+#[cfg_attr(docsrs, doc(cfg(feature = "distribution")))]
+pub mod bundle;
+
 // re-export
 #[cfg(all(feature = "macros", feature = "server"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "macros", feature = "server"))))]

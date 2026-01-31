@@ -29,6 +29,11 @@ runtime:
     memory_pages: 1024  # 64MB
     fuel: 10000000      # Legacy configuration (kept for compatibility)
 
+    # Environment variables that will be available to the WASM module
+    env_vars:
+      - name: DATABASE_URL
+        value: "${DATABASE_URL}"  # Will be resolved from host environment
+
     # Modern metering configuration for WasmEdge
     metering:
       enabled: true
@@ -117,6 +122,7 @@ policy:
           access: ["read", "write"]
     environment:
       allow:
+        - key: "DATABASE_URL"  # Required for PostgreSQL connection
         - key: "HOME"
         - key: "USER"
         - key: "TMPDIR"
@@ -125,6 +131,7 @@ policy:
         - key: "*_TOKEN"
         - key: "*_KEY"
         - key: "*_SECRET"
+        - key: "*_PASSWORD"  # But DATABASE_URL is allowed despite containing password
   resources:
     execution:
       max_fuel: 10000000

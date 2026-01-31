@@ -185,3 +185,40 @@ mcp:
     prompts: false
     resources: false
     logging: true
+
+# Distribution configuration for OCI registry publishing
+distribution:
+  # OCI registry URI for calculator bundle
+  registry: "ghcr.io/ra0x3/mcpkit-calculator"
+
+  # Version (uses server.version by default)
+  version: "0.1.0"
+
+  # Tags to apply
+  tags:
+    - "latest"
+    - "v0.1.0"
+
+  # Bundle metadata
+  metadata:
+    authors:
+      - "mcpkit-rs contributors"
+    license: "Apache-2.0"
+    repository: "https://github.com/ra0x3/mcpkit-rs"
+    keywords:
+      - "calculator"
+      - "wasm"
+      - "mcp"
+      - "wasmtime"
+    homepage: "https://github.com/ra0x3/mcpkit-rs"
+    documentation: "https://github.com/ra0x3/mcpkit-rs/tree/main/examples/wasm/wasmtime/calculator"
+
+  # Files to include in bundle
+  include:
+    - "calculator.wasm"
+    - "config.yaml"
+
+  # Registry authentication (using environment variables)
+  auth:
+    username: "${GITHUB_USER}"
+    password: "${GITHUB_TOKEN}"

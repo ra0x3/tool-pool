@@ -1,0 +1,56 @@
+[package]
+name = "mcpkit-rs-tests"
+version = "0.14.0"
+edition = "2024"
+authors = ["4t145 <u4t145@163.com>", "ra0x3 <ractz@pm.me>"]
+license = "Apache-2.0"
+repository = "https://github.com/ra0x3/mcpkit-rs"
+description = "Integration tests for mcpkit-rs"
+publish = false
+
+[dependencies]
+mcpkit_rs = { version = "0.14.0", path = "../mcpkit-rs", features = ["distribution", "config", "wasm-tools", "server", "client"] }
+mcpkit-rs-config = { path = "../mcpkit-rs-config" }
+mcpkit-rs-policy = { path = "../mcpkit-rs-policy" }
+mcpkit-rs-cli = { path = "../mcpkit-rs-cli" }
+
+tokio = { version = "1.36", features = ["full", "test-util"] }
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+tempfile = "3.8"
+reqwest = { version = "0.12", features = ["json"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Testing utilities
+assert_cmd = "2.0"
+predicates = "3.1"
+serial_test = "3.1"
+wiremock = "0.6"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[test]]
+name = "integration"
+path = "tests/integration/main.rs"
+
+[[test]]
+name = "distribution"
+path = "tests/distribution/main.rs"
+required-features = ["mcpkit_rs/distribution"]
+
+[[test]]
+name = "wasm"
+path = "tests/wasm/main.rs"
+required-features = ["mcpkit_rs/wasm-tools"]
+
+[[test]]
+name = "policy"
+path = "tests/policy/main.rs"
+
+[[test]]
+name = "cli"
+path = "tests/cli/main.rs"

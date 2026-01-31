@@ -114,8 +114,8 @@ impl FullStackServer {
     async fn connect_db() -> Option<Client> {
         #[cfg(feature = "wasmedge-postgres")]
         {
-            let database_url = env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/todo".to_string());
+            let database_url =
+                env::var("DATABASE_URL").expect("DATABASE_URL environment variable must be set");
 
             // Use a timeout to avoid hanging in WasmEdge
             match tokio::time::timeout(
@@ -597,7 +597,7 @@ impl FullStackServer {
     #[tool(description = "Test PostgreSQL database connection")]
     async fn test_connection(&self) -> Result<String, String> {
         let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/todo".to_string());
+            .map_err(|_| "DATABASE_URL environment variable not set".to_string())?;
 
         #[cfg(feature = "wasmedge-postgres")]
         {

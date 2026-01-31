@@ -18,6 +18,10 @@ This fork provides a Rust-native MCP SDK with:
 - **Tokio 1.36**: Downgraded from 1.40+ for broader compatibility
 - **Portable Tool Development**: Build once, run anywhere with WebAssembly
 
+## Quick Start
+
+See the [examples directory](examples/) for working implementations.
+
 ## WebAssembly Runtime Support
 
 This fork enables portable MCP tools through WebAssembly, supporting multiple runtimes for different use cases:
@@ -73,11 +77,11 @@ WebAssembly provides:
 | **HTTP Client** | ✓ (via WasmEdge) | ✗ (pre-opened FDs only) |
 | **LLM/ML Support** | ✓ (via WasmEdge) | ✗ |
 | **Permission System** | Fine-grained config.yaml | Fine-grained policy.yaml |
-| **OCI Registry Support** | ✗ | ✓ |
+| **OCI Registry Support** | ✓ | ✓ |
 | **Security Model** | Runtime sandboxing | Capability-based + interactive |
 | **Network Hosting** | ✗ | ✓ (planned) |
 | **Development Model** | Write MCP tools in any WASM language | Write generic WASM Components |
-| **Tool Distribution** | Binary/source | OCI registry |
+| **Tool Distribution** | Binary/source/OCI registry | OCI registry |
 | **Zero Dependencies** | ✗ (requires WASI runtime) | ✗ (requires WASI runtime) |
 | **Supported Languages** | JavaScript, Go, Python, Rust | JS, Python, Rust, Go |
 
@@ -96,6 +100,42 @@ WebAssembly provides:
 - Distributing tools via OCI registries
 - Needing network-hosted MCP servers
 - Working with existing WASM Components
+
+## OCI Distribution
+
+mcpkit-rs supports distributing MCP tools as OCI bundles, similar to [Wassette](https://github.com/wassette/wassette). This enables sharing compiled WASM tools through container registries like Docker Hub or GitHub Container Registry.
+
+### How It Works
+
+Bundle your WASM binary and configuration into an OCI artifact, push it to any OCI-compliant registry, and pull it on any system with mcpkit-rs installed.
+
+### Example Workflow
+
+```bash
+# Project structure
+$ tree .
+.
+├── config.yaml           # MCP tool configuration
+├── target/
+│   └── wasm32-wasip1/
+│       └── release/
+│           └── my-tool.wasm  # Compiled WASM binary
+└── Cargo.toml
+
+# Build the bundle
+$ mcpk bundle build --config config.yaml --wasm target/wasm32-wasip1/release/my-tool.wasm --output my-tool-bundle.tar
+✓ Bundle created: my-tool-bundle.tar (2.3 MB)
+
+# Push to OCI registry
+$ mcpk bundle push --bundle my-tool-bundle.tar --uri oci://ghcr.io/myorg/my-tool:v1.0.0
+✓ Pushed to ghcr.io/myorg/my-tool:v1.0.0
+  Digest: sha256:abc123...
+
+# Pull and run on another system
+$ mcpk bundle pull --uri oci://ghcr.io/myorg/my-tool:v1.0.0
+✓ Downloaded my-tool:v1.0.0
+  Extracted to: ~/.mcpkit/tools/my-tool/
+```
 
 ## Installation
 
@@ -140,10 +180,6 @@ rmcp = { version = "0.13.0", features = ["server", "wasi"] }
 [target.wasm32-wasip1.dependencies]
 rmcp = { version = "0.13.0", features = ["server", "wasmedge"] }
 ```
-
-## Quick Start
-
-See the [examples directory](examples/) for working implementations.
 
 ## Resources
 

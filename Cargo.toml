@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/mcpkit-rs",
+    "crates/mcpkit-rs-cli",
     "crates/mcpkit-rs-config",
     "crates/mcpkit-rs-macros",
     "crates/mcpkit-rs-policy",
@@ -10,7 +11,11 @@ members = [
     "examples/transport",
     "examples/wasm/wasmtime/calculator",
 ]
-exclude = ["examples/rig-integration", "examples/wasm/wasmedge/fullstack"]
+exclude = [
+    "crates/mcpkit-rs-tests",
+    "examples/rig-integration",
+    "examples/wasm/wasmedge/fullstack",
+]
 default-members = ["crates/mcpkit-rs", "crates/mcpkit-rs-macros"]
 resolver = "2"
 

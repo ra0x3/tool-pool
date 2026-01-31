@@ -41,6 +41,9 @@ pub struct Config {
     /// MCP-specific configuration
     pub mcp: McpConfig,
 
+    /// Distribution configuration for OCI/registry publishing
+    pub distribution: Option<DistributionConfig>,
+
     /// Extension configurations
     #[serde(default)]
     pub extensions: HashMap<String, serde_json::Value>,
@@ -311,6 +314,71 @@ impl McpCapabilities {
     }
 }
 
+/// Distribution configuration for OCI registry publishing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DistributionConfig {
+    /// OCI registry URI for this bundle (e.g., ghcr.io/org/bundle)
+    pub registry: String,
+
+    /// Version to publish (defaults to server.version)
+    pub version: Option<String>,
+
+    /// Tags to apply to the OCI image
+    #[serde(default)]
+    pub tags: Vec<String>,
+
+    /// Bundle metadata for registry
+    pub metadata: Option<BundleMetadata>,
+
+    /// Files to include in bundle (defaults to module.wasm + config.yaml)
+    #[serde(default)]
+    pub include: Vec<String>,
+
+    /// Registry authentication configuration
+    pub auth: Option<RegistryAuth>,
+}
+
+/// Bundle metadata for distribution
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BundleMetadata {
+    /// Bundle authors
+    #[serde(default)]
+    pub authors: Vec<String>,
+
+    /// License identifier (e.g., MIT, Apache-2.0)
+    pub license: Option<String>,
+
+    /// Source repository URL
+    pub repository: Option<String>,
+
+    /// Keywords for discovery
+    #[serde(default)]
+    pub keywords: Vec<String>,
+
+    /// Bundle homepage
+    pub homepage: Option<String>,
+
+    /// Documentation URL
+    pub documentation: Option<String>,
+}
+
+/// Registry authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegistryAuth {
+    /// Registry username (supports env var interpolation)
+    pub username: Option<String>,
+
+    /// Registry password/token (supports env var interpolation)
+    pub password: Option<String>,
+
+    /// Path to auth file (e.g., ~/.docker/config.json)
+    pub auth_file: Option<PathBuf>,
+
+    /// Use system keychain for credentials
+    #[serde(default)]
+    pub use_keychain: bool,
+}
+
 #[cfg(test)]
 mod tests;
 
@@ -482,6 +550,11 @@ impl Config {
 
         self.runtime = other.runtime;
         self.mcp = other.mcp;
+
+        if let Some(distribution) = other.distribution {
+            self.distribution = Some(distribution);
+        }
+
         self.extensions.extend(other.extensions);
 
         Ok(())

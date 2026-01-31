@@ -220,14 +220,14 @@ else
     echo "${YELLOW}Starting PostgreSQL container...${NC}"
     docker run -d \
         --name fullstack-postgres \
-        -e POSTGRES_DB=testdb \
+        -e POSTGRES_DB=todo \
         -e POSTGRES_USER=postgres \
         -e POSTGRES_PASSWORD=postgres \
         -p 5432:5432 \
         postgres:alpine > /dev/null 2>&1
     echo "${CYAN}  Waiting for PostgreSQL to start...${NC}"
     sleep 5
-    docker exec fullstack-postgres psql -U postgres -d testdb -c "SELECT 1" > /dev/null 2>&1
+    docker exec fullstack-postgres psql -U postgres -d todo -c "SELECT 1" > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         echo "${GREEN}✓ PostgreSQL started successfully${NC}"
     else
@@ -236,8 +236,8 @@ else
     fi
 fi
 
-echo "${YELLOW}Building fullstack WASM module...${NC}"
-./build.sh --transport http > /dev/null 2>&1
+echo "${YELLOW}Building fullstack WASM modules (HTTP + stdio)...${NC}"
+./build.sh --transport both > /dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "${RED}✗ Failed to build fullstack WASM module${NC}"
     exit 1
@@ -250,10 +250,29 @@ if [ ! -f "$HTTP_WASM_FILE" ]; then
     exit 1
 fi
 echo "${GREEN}✓ Found HTTP WASM file: $HTTP_WASM_FILE${NC}"
+
+STDIO_WASM_FILE="target/wasm32-wasip1/release/fullstack-stdio.wasm"
+if [ ! -f "$STDIO_WASM_FILE" ]; then
+    echo "${RED}✗ Stdio WASM file not found at $STDIO_WASM_FILE${NC}"
+    exit 1
+fi
+echo "${GREEN}✓ Found stdio WASM file: $STDIO_WASM_FILE${NC}"
 echo ""
 
 echo "${CYAN}Starting HTTP server...${NC}"
-DATABASE_URL="postgres://postgres:postgres@localhost/testdb" HOST="0.0.0.0" PORT="8080" wasmedge --dir .:. "$HTTP_WASM_FILE" > /tmp/http_server.log 2>&1 &
+# Explicitly forward the runtime configuration into WasmEdge. Environment variables
+# must be declared with --env for the sandbox, so derive the effective values and
+# expose them both to the spawning shell process and the WASM module.
+SERVER_DATABASE_URL="${DATABASE_URL:-postgres://postgres:postgres@localhost/todo}"
+SERVER_HOST="${HOST:-0.0.0.0}"
+SERVER_PORT="${PORT:-8080}"
+
+HOST="$SERVER_HOST" PORT="$SERVER_PORT" DATABASE_URL="$SERVER_DATABASE_URL" \
+wasmedge \
+    --env "DATABASE_URL=$SERVER_DATABASE_URL" \
+    --env "HOST=$SERVER_HOST" \
+    --env "PORT=$SERVER_PORT" \
+    --dir .:. "$HTTP_WASM_FILE" > /tmp/http_server.log 2>&1 &
 HTTP_PID=$!
 sleep 3
 if ! ps -p $HTTP_PID > /dev/null; then
@@ -304,18 +323,161 @@ send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"create_to
 send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"delete_todo","arguments":{}},"id":18}' "false" "Missing required arguments (should fail)"
 
 echo ""
-echo "${YELLOW}Cleaning up...${NC}"
+echo "${YELLOW}Cleaning up HTTP server...${NC}"
 kill $HTTP_PID 2>/dev/null
 wait $HTTP_PID 2>/dev/null || true
 echo "${GREEN}✓ HTTP server stopped${NC}"
+echo ""
+
+echo "${BLUE}=== Distribution Tests ===${NC}"
+
+# Build the mcpkit CLI (required for bundle tests)
+if ! (cd ../../../../ && cargo build --release --package mcpkit-rs-cli --bin mcpkit >/dev/null 2>&1); then
+    echo "${RED}✗ Failed to build mcpkit CLI${NC}"
+    exit 1
+fi
+MCPKIT="../../../../target/release/mcpkit"
+if [ ! -x "$MCPKIT" ]; then
+    echo "${RED}✗ mcpkit binary not found at $MCPKIT${NC}"
+    exit 1
+fi
+
+REGISTRY_MODE="local"
+REGISTRY_STARTED=false
+REGISTRY_CONTAINER="fullstack-test-registry"
+REGISTRY_PORT="${FULLSTACK_REGISTRY_PORT:-5050}"
+REGISTRY_URI=""
+PULLED_BUNDLE_DIR=""
+
+# Test 19: Prepare OCI registry target
+TESTS_RUN=$((TESTS_RUN + 1))
+echo "${BLUE}Test $TESTS_RUN: Prepare OCI registry target${NC}"
+if [ -n "$GITHUB_USER" ] && [ -n "$GITHUB_TOKEN" ]; then
+    REGISTRY_MODE="github"
+    TEST_TAG="test-$(date +%s)"
+    REGISTRY_URI="oci://ghcr.io/${GITHUB_USER}/mcpkit-fullstack:${TEST_TAG}"
+    echo "  Using GitHub Container Registry: ${REGISTRY_URI}"
+    echo "  ${GREEN}✓ Pass${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    echo "  Starting local OCI registry on port ${REGISTRY_PORT}..."
+    REGISTRY_URI="oci://localhost:${REGISTRY_PORT}/mcpkit/fullstack:test-$(date +%s)"
+    # Stop any existing container with the same name
+    if docker ps -aq -f name="^${REGISTRY_CONTAINER}$" >/dev/null 2>&1 && \
+       [ -n "$(docker ps -aq -f name="^${REGISTRY_CONTAINER}$")" ]; then
+        docker rm -f "$REGISTRY_CONTAINER" >/dev/null 2>&1 || true
+    fi
+    if docker run -d -p ${REGISTRY_PORT}:5000 --name "$REGISTRY_CONTAINER" registry:2 >/dev/null 2>&1; then
+        REGISTRY_STARTED=true
+        sleep 3
+        echo "  Local registry URI: ${REGISTRY_URI}"
+        echo "  ${GREEN}✓ Pass${NC}"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo "  ${RED}✗ Fail - could not start local registry${NC}"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+fi
+
+# Test 20: Push bundle to OCI registry
+TESTS_RUN=$((TESTS_RUN + 1))
+echo "${BLUE}Test $TESTS_RUN: Push bundle to OCI registry${NC}"
+PUSH_LOG=$(mktemp)
+if GITHUB_USER="$GITHUB_USER" GITHUB_TOKEN="$GITHUB_TOKEN" \
+    "$MCPKIT" bundle push --wasm "$STDIO_WASM_FILE" --config config.stdio.yaml --uri "$REGISTRY_URI" >"$PUSH_LOG" 2>&1; then
+    echo "  ${GREEN}✓ Pass${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    echo "  ${RED}✗ Fail - bundle push failed${NC}"
+    tail -n 20 "$PUSH_LOG"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
+# Test 21: Pull bundle from OCI registry
+TESTS_RUN=$((TESTS_RUN + 1))
+echo "${BLUE}Test $TESTS_RUN: Pull bundle from OCI registry${NC}"
+PULLED_BUNDLE_DIR=$(mktemp -d /tmp/fullstack-bundle.XXXXXX)
+PULL_LOG=$(mktemp)
+if GITHUB_USER="$GITHUB_USER" GITHUB_TOKEN="$GITHUB_TOKEN" \
+    "$MCPKIT" bundle pull "$REGISTRY_URI" --output "$PULLED_BUNDLE_DIR" --force >"$PULL_LOG" 2>&1; then
+    echo "  ${GREEN}✓ Pass${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    echo "  ${RED}✗ Fail - bundle pull failed${NC}"
+    tail -n 20 "$PULL_LOG"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
+# Test 22: Verify pulled bundle integrity
+TESTS_RUN=$((TESTS_RUN + 1))
+echo "${BLUE}Test $TESTS_RUN: Verify pulled bundle integrity${NC}"
+if [ -n "$PULLED_BUNDLE_DIR" ] && \
+   [ -f "$PULLED_BUNDLE_DIR/module.wasm" ] && \
+   [ -f "$PULLED_BUNDLE_DIR/config.yaml" ]; then
+    echo "  ${GREEN}✓ Pass${NC}"
+    TESTS_PASSED=$((TESTS_PASSED + 1))
+else
+    echo "  ${RED}✗ Fail - pulled bundle missing module or config${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+
+# Test 23: Run server from pulled bundle
+TESTS_RUN=$((TESTS_RUN + 1))
+echo "${BLUE}Test $TESTS_RUN: Run server from pulled bundle${NC}"
+RUN_LOG=$(mktemp)
+RUN_OUTPUT=$(mktemp)
+RUN_INPUT=$(mktemp)
+if [ -n "$PULLED_BUNDLE_DIR" ] && [ -f "$PULLED_BUNDLE_DIR/module.wasm" ]; then
+    cp "$PULLED_BUNDLE_DIR/config.yaml" "$PULLED_BUNDLE_DIR/config.stdio.yaml" 2>/dev/null || true
+    echo "$INIT_REQUEST" > "$RUN_INPUT"
+    if (cd "$PULLED_BUNDLE_DIR" && \
+        HOST="$SERVER_HOST" PORT="$SERVER_PORT" DATABASE_URL="$SERVER_DATABASE_URL" \
+            wasmedge \
+            --env "DATABASE_URL=$SERVER_DATABASE_URL" \
+            --env "HOST=$SERVER_HOST" \
+            --env "PORT=$SERVER_PORT" \
+            --dir .:. module.wasm \
+            < "$RUN_INPUT") > "$RUN_OUTPUT" 2>"$RUN_LOG"; then
+        if grep -q '"serverInfo"' "$RUN_OUTPUT"; then
+            echo "  ${GREEN}✓ Pass${NC}"
+            TESTS_PASSED=$((TESTS_PASSED + 1))
+        else
+            echo "  ${RED}✗ Fail - initialization response missing${NC}"
+            tail -n 20 "$RUN_LOG"
+            TESTS_FAILED=$((TESTS_FAILED + 1))
+        fi
+    else
+        echo "  ${RED}✗ Fail - pulled WASM did not initialize${NC}"
+        tail -n 20 "$RUN_LOG"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+else
+    echo "  ${RED}✗ Fail - no pulled bundle to execute${NC}"
+    TESTS_FAILED=$((TESTS_FAILED + 1))
+fi
+rm -f "$RUN_LOG" "$RUN_OUTPUT" "$RUN_INPUT" "$PUSH_LOG" "$PULL_LOG"
+if [ -n "$PULLED_BUNDLE_DIR" ]; then
+    rm -rf "$PULLED_BUNDLE_DIR"
+fi
+
+if [ "$REGISTRY_MODE" = "local" ] && [ "$REGISTRY_STARTED" = "true" ]; then
+    echo "${YELLOW}Stopping local OCI registry...${NC}"
+    docker stop "$REGISTRY_CONTAINER" >/dev/null 2>&1 || true
+    docker rm "$REGISTRY_CONTAINER" >/dev/null 2>&1 || true
+    echo "${GREEN}✓ Local registry stopped${NC}"
+fi
 
 echo ""
-read -p "Stop PostgreSQL container? (y/n) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    docker stop fullstack-postgres > /dev/null 2>&1
-    docker rm fullstack-postgres > /dev/null 2>&1
-    echo "${GREEN}✓ PostgreSQL stopped and removed${NC}"
+if [ -t 0 ]; then
+    read -p "Stop PostgreSQL container? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        docker stop fullstack-postgres > /dev/null 2>&1
+        docker rm fullstack-postgres > /dev/null 2>&1
+        echo "${GREEN}✓ PostgreSQL stopped and removed${NC}"
+    fi
+else
+    echo "${YELLOW}Skipping PostgreSQL shutdown prompt (non-interactive mode)${NC}"
 fi
 
 echo ""

@@ -60,7 +60,9 @@ COPY --from=builder /app/examples/wasm/wasmedge/fullstack/config.http.yaml /app/
 # Set environment variables
 ENV PATH="/root/.wasmedge/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/root/.wasmedge/lib:${LD_LIBRARY_PATH}"
-ENV DATABASE_URL="postgres://postgres:postgres@postgres:5432/todo"
+# DATABASE_URL should be provided at runtime
+# Default is empty to enforce explicit configuration
+ENV DATABASE_URL=""
 ENV HOST="0.0.0.0"
 
 # Create entrypoint script for running with Inspector
