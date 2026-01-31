@@ -476,27 +476,14 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Publish mcpkit_rs_macros
+      - name: Publish Crates
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
         run: |
           if [ "${{ github.event.inputs.test-release }}" == "true" ]; then
-            cargo publish -p mcpkit_rs_macros --dry-run --locked --no-verify
+            sh cargo-publish.sh --dry-run
           else
-            cargo publish -p mcpkit_rs_macros --locked --no-verify
-          fi
-
-      - name: Wait for crates.io to index
-        run: sleep 30
-
-      - name: Publish mcpkit_rs
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
-        run: |
-          if [ "${{ github.event.inputs.test-release }}" == "true" ]; then
-            cargo publish -p mcpkit_rs --dry-run --locked --no-verify
-          else
-            cargo publish -p mcpkit_rs --locked --no-verify
+            sh cargo-publish.sh
           fi
 
   # Release job (unchanged)

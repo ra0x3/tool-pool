@@ -181,6 +181,42 @@ rmcp = { version = "0.13.0", features = ["server", "wasi"] }
 rmcp = { version = "0.13.0", features = ["server", "wasmedge"] }
 ```
 
+## OCI Distribution
+
+MCPKit ships MCP servers as OCI artifacts - WebAssembly modules bundled with configuration, pushed to any OCI registry. Similar to Microsoft's [Wazero](https://github.com/microsoft/wazero) approach for portable WASM distribution.
+
+```bash
+$ echo "Building WASM module..."
+$ cargo build --target wasm32-wasip1 --release
+    Finished release [optimized] target(s) in 0.12s
+
+$ mcpk bundle push \
+    --wasm target/wasm32-wasip1/release/calculator.wasm \
+    --config config.yaml \
+    --uri oci://ghcr.io/myorg/calculator:v1.0.0
+Creating bundle...
+✓ Added module.wasm (2.1 MB)
+✓ Added config.yaml (512 B)
+✓ Generated manifest.json
+Pushing to oci://ghcr.io/myorg/calculator:v1.0.0...
+✓ Layer sha256:a3ed95ca... (2.1 MB)
+✓ Layer sha256:b4d3f2c8... (1.0 KB)
+✓ Manifest sha256:7f8a9b2c...
+✓ Push complete: ghcr.io/myorg/calculator:v1.0.0
+
+$ mcpk bundle pull oci://ghcr.io/myorg/calculator:v1.0.0 --output ./dist
+Pulling from oci://ghcr.io/myorg/calculator:v1.0.0...
+✓ Downloaded sha256:a3ed95ca... (2.1 MB)
+✓ Downloaded sha256:b4d3f2c8... (1.0 KB)
+✓ Extracted to ./dist
+✓ Pull complete: 2 files
+
+$ ls ./dist
+module.wasm  config.yaml  manifest.json
+```
+
+Authenticate with `GITHUB_USER` and `GITHUB_TOKEN` environment variables. See [examples/wasm/wasmtime/calculator](examples/wasm/wasmtime/calculator) for a complete implementation.
+
 ## Resources
 
 - [MCP Specification](https://modelcontextprotocol.io/specification/2025-11-25)
