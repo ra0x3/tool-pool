@@ -9,7 +9,7 @@ description = "Integration tests for mcpkit-rs"
 publish = false
 
 [dependencies]
-mcpkit_rs = { version = "0.14.0", path = "../mcpkit-rs", features = ["distribution", "config", "wasm-tools", "server", "client"] }
+mcpkit-rs = { workspace = true, path = "../mcpkit-rs", features = ["distribution", "config", "wasm-tools", "server", "client"] }
 mcpkit-rs-config = { path = "../mcpkit-rs-config" }
 mcpkit-rs-policy = { path = "../mcpkit-rs-policy" }
 mcpkit-rs-cli = { path = "../mcpkit-rs-cli" }
@@ -40,12 +40,12 @@ path = "tests/integration/main.rs"
 [[test]]
 name = "distribution"
 path = "tests/distribution/main.rs"
-required-features = ["mcpkit_rs/distribution"]
+required-features = ["mcpkit-rs/distribution"]
 
 [[test]]
 name = "wasm"
 path = "tests/wasm/main.rs"
-required-features = ["mcpkit_rs/wasm-tools"]
+required-features = ["mcpkit-rs/wasm-tools"]
 
 [[test]]
 name = "policy"

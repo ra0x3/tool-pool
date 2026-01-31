@@ -331,14 +331,14 @@ echo ""
 
 echo "${BLUE}=== Distribution Tests ===${NC}"
 
-# Build the mcpkit CLI (required for bundle tests)
-if ! (cd ../../../../ && cargo build --release --package mcpkit-rs-cli --bin mcpkit >/dev/null 2>&1); then
-    echo "${RED}✗ Failed to build mcpkit CLI${NC}"
+# Build the mcpk CLI (required for bundle tests)
+if ! (cd ../../../../ && cargo build --release --package mcpkit-rs-cli --bin mcpk >/dev/null 2>&1); then
+    echo "${RED}✗ Failed to build mcpk CLI${NC}"
     exit 1
 fi
-MCPKIT="../../../../target/release/mcpkit"
-if [ ! -x "$MCPKIT" ]; then
-    echo "${RED}✗ mcpkit binary not found at $MCPKIT${NC}"
+MCPK="../../../../target/release/mcpk"
+if [ ! -x "$MCPK" ]; then
+    echo "${RED}✗ mcpk binary not found at $MCPK${NC}"
     exit 1
 fi
 
@@ -384,7 +384,7 @@ TESTS_RUN=$((TESTS_RUN + 1))
 echo "${BLUE}Test $TESTS_RUN: Push bundle to OCI registry${NC}"
 PUSH_LOG=$(mktemp)
 if GITHUB_USER="$GITHUB_USER" GITHUB_TOKEN="$GITHUB_TOKEN" \
-    "$MCPKIT" bundle push --wasm "$STDIO_WASM_FILE" --config config.stdio.yaml --uri "$REGISTRY_URI" >"$PUSH_LOG" 2>&1; then
+    "$MCPK" bundle push --wasm "$STDIO_WASM_FILE" --config config.stdio.yaml --uri "$REGISTRY_URI" >"$PUSH_LOG" 2>&1; then
     echo "  ${GREEN}✓ Pass${NC}"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else
@@ -399,7 +399,7 @@ echo "${BLUE}Test $TESTS_RUN: Pull bundle from OCI registry${NC}"
 PULLED_BUNDLE_DIR=$(mktemp -d /tmp/fullstack-bundle.XXXXXX)
 PULL_LOG=$(mktemp)
 if GITHUB_USER="$GITHUB_USER" GITHUB_TOKEN="$GITHUB_TOKEN" \
-    "$MCPKIT" bundle pull "$REGISTRY_URI" --output "$PULLED_BUNDLE_DIR" --force >"$PULL_LOG" 2>&1; then
+    "$MCPK" bundle pull "$REGISTRY_URI" --output "$PULLED_BUNDLE_DIR" --force >"$PULL_LOG" 2>&1; then
     echo "  ${GREEN}✓ Pass${NC}"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else

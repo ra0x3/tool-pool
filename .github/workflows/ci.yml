@@ -91,7 +91,7 @@ jobs:
 
       - name: Generate documentation
         run: |
-          cargo +nightly doc --no-deps -p mcpkit_rs -p mcpkit_rs_macros --all-features
+          cargo +nightly doc --no-deps -p mcpkit-rs -p mcpkit-rs-macros --all-features
         env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
 
@@ -241,6 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [clippy, security-audit]
     if: always() && !cancelled() && !contains(needs.*.result, 'failure')
+    environment: ci
     steps:
       - uses: actions/checkout@v6
 
@@ -273,6 +274,11 @@ jobs:
         run: |
           curl https://wasmtime.dev/install.sh -sSf | bash
           echo "$HOME/.wasmtime/bin" >> $GITHUB_PATH
+
+      - name: Install WasmEdge
+        run: |
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -v 0.14.1
+          echo "$HOME/.wasmedge/bin" >> $GITHUB_PATH
 
       - name: Install Docker Compose
         run: |
@@ -333,6 +339,9 @@ jobs:
           done
 
       - name: Test Calculator with test harness
+        env:
+          GITHUB_USER: ${{ secrets.ENV_GITHUB_USER }}
+          GITHUB_TOKEN: ${{ secrets.ENV_GITHUB_TOKEN }}
         run: |
           cd examples/wasm/wasmtime/calculator
 
@@ -352,9 +361,39 @@ jobs:
             echo "⚠ No test harness found for Calculator, skipping"
           fi
 
-      - name: Test Fullstack with Docker (test profile)
+      - name: Test Fullstack with test harness
+        env:
+          GITHUB_USER: ${{ secrets.ENV_GITHUB_USER }}
+          GITHUB_TOKEN: ${{ secrets.ENV_GITHUB_TOKEN }}
         run: |
           cd examples/wasm/wasmedge/fullstack
+
+          # Build the fullstack WASM
+          ./build.sh
+
+          # Check if test harness exists and run it
+          if [ -f "test_harness.sh" ]; then
+            echo "Running Fullstack test harness..."
+            ./test_harness.sh
+            echo "✓ Fullstack test harness passed"
+          elif [ -f "test.sh" ]; then
+            echo "Running Fullstack test script..."
+            ./test.sh
+            echo "✓ Fullstack test script passed"
+          else
+            echo "⚠ No test harness found for Fullstack, skipping"
+          fi
+
+      - name: Test Fullstack with Docker (test profile)
+        env:
+          GITHUB_USER: ${{ secrets.ENV_GITHUB_USER }}
+          GITHUB_TOKEN: ${{ secrets.ENV_GITHUB_TOKEN }}
+        run: |
+          cd examples/wasm/wasmedge/fullstack
+
+          # Clean up any existing containers and volumes
+          docker compose down -v 2>/dev/null || true
+          docker rm -f fullstack-postgres 2>/dev/null || true
 
           echo "Running Fullstack Docker tests with test profile..."
           docker compose --profile test up --build --abort-on-container-exit --exit-code-from test-runner || {

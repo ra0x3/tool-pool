@@ -20,7 +20,7 @@ anyhow = "1.0"
 futures = "0.3"
 hyper = { version = "1", features = ["client", "server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
-mcpkit_rs = { workspace = true, features = ["server", "client", "schemars"] }
+mcpkit-rs = { workspace = true, features = ["server", "client", "schemars"] }
 pin-project-lite = "0.2"
 rand = { version = "0.9" }
 reqwest = { version = "0.12" }

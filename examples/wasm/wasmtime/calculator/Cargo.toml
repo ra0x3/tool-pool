@@ -16,7 +16,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-mcpkit_rs = { workspace = true, features = ["server", "macros", "schemars"] }
+mcpkit-rs = { workspace = true, features = ["server", "macros", "schemars"] }
 schemars = "1.0"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "=1.36.0", features = ["rt", "io-util", "sync", "macros", "time"] }

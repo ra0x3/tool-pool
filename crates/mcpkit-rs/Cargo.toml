@@ -1,5 +1,5 @@
 [package]
-name = "mcpkit_rs"
+name = "mcpkit-rs"
 license = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
@@ -7,7 +7,7 @@ repository = { workspace = true }
 homepage = { workspace = true }
 readme = { workspace = true }
 description = "Rust SDK for Model Context Protocol"
-documentation = "https://docs.rs/mcpkit_rs"
+documentation = "https://docs.rs/mcpkit-rs"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["base64", "macros", "server", "config"]
 client = ["dep:tokio-stream"]
 server = ["transport-async-rw", "dep:schemars"]
-macros = ["dep:mcpkit_rs_macros", "dep:pastey"]
+macros = ["dep:mcpkit-rs-macros", "dep:pastey"]
 elicitation = []
 wasm-tools = ["dep:wasmtime", "dep:wasmtime-wasi"]
 config = ["dep:mcpkit-rs-config", "dep:mcpkit-rs-policy"]
@@ -77,9 +77,9 @@ hex = { version = "0.4", optional = true }
 http = { version = "1", optional = true }
 http-body = { version = "1", optional = true }
 http-body-util = { version = "0.1", optional = true }
-mcpkit-rs-config = { path = "../mcpkit-rs-config", optional = true }
-mcpkit-rs-policy = { path = "../mcpkit-rs-policy", optional = true }
-mcpkit_rs_macros = { workspace = true, optional = true }
+mcpkit-rs-config = { workspace = true, optional = true }
+mcpkit-rs-macros = { workspace = true, optional = true }
+mcpkit-rs-policy = { workspace = true, optional = true }
 oauth2 = { version = "5.0", optional = true, default-features = false, features = ["reqwest"] }
 pastey = { version = "0.2.0", optional = true }
 pin-project-lite = "0.2"

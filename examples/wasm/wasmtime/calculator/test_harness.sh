@@ -109,13 +109,13 @@ send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"add","arg
 # Test 9: Decimal numbers
 send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"multiply","arguments":{"a":2.5,"b":4}},"id":10}' "true" "multiply(2.5, 4) = 10"
 
-# Build the mcpkit CLI silently if not already built
-(cd ../../../../ && cargo build --release --package mcpkit-rs-cli --bin mcpkit >/dev/null 2>&1)
+# Build the mcpk CLI silently if not already built
+(cd ../../../../ && cargo build --release --package mcpkit-rs-cli --bin mcpk >/dev/null 2>&1)
 if [ $? -ne 0 ]; then
-    echo "${RED}✗ Failed to build mcpkit CLI - bundle tests will be skipped${NC}"
-    MCPKIT=""
+    echo "${RED}✗ Failed to build mcpk CLI - bundle tests will be skipped${NC}"
+    MCPK=""
 else
-    MCPKIT="../../../../target/release/mcpkit"
+    MCPK="../../../../target/release/mcpk"
 fi
 
 # Check for GitHub credentials
@@ -150,13 +150,13 @@ echo ""
 # Test 11: Push bundle to GitHub registry
 TESTS_RUN=$((TESTS_RUN + 1))
 echo "${BLUE}Test $TESTS_RUN: Push bundle to GitHub Container Registry${NC}"
-if [ "$USE_REAL_REGISTRY" = true ] && [ -n "$MCPKIT" ]; then
-    # Export the env vars for mcpkit
+if [ "$USE_REAL_REGISTRY" = true ] && [ -n "$MCPK" ]; then
+    # Export the env vars for mcpk
     export GITHUB_USER="$GITHUB_USER"
     export GITHUB_TOKEN="$GITHUB_TOKEN"
 
     # Run the push command and capture output
-    if $MCPKIT bundle push --wasm calculator.wasm --config config.yaml --uri "${REGISTRY_URI}" >/tmp/push_output.txt 2>&1; then
+    if $MCPK bundle push --wasm calculator.wasm --config config.yaml --uri "${REGISTRY_URI}" >/tmp/push_output.txt 2>&1; then
         # Push succeeded
         echo "  ${GREEN}✓ Passed - pushed to ${REGISTRY_URI}${NC}"
         TESTS_PASSED=$((TESTS_PASSED + 1))
@@ -185,9 +185,9 @@ echo ""
 # Test 12: Pull bundle from GitHub registry
 TESTS_RUN=$((TESTS_RUN + 1))
 echo "${BLUE}Test $TESTS_RUN: Pull bundle from GitHub Container Registry${NC}"
-if [ "$USE_REAL_REGISTRY" = true ] && [ -n "$MCPKIT" ] && [ "$PUSH_SUCCESS" = true ]; then
+if [ "$USE_REAL_REGISTRY" = true ] && [ -n "$MCPK" ] && [ "$PUSH_SUCCESS" = true ]; then
     rm -rf /tmp/pulled-calculator-bundle
-    if $MCPKIT bundle pull "${REGISTRY_URI}" --output /tmp/pulled-calculator-bundle >/tmp/pull_output.txt 2>&1; then
+    if $MCPK bundle pull "${REGISTRY_URI}" --output /tmp/pulled-calculator-bundle >/tmp/pull_output.txt 2>&1; then
         echo "  ${GREEN}✓ Passed - pulled from ${REGISTRY_URI}${NC}"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         PULL_SUCCESS=true

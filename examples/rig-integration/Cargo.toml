@@ -16,7 +16,7 @@ publish = false
 anyhow = "1.0"
 futures = "0.3"
 rig-core = "0.28.0"
-mcpkit_rs = { path = "../../crates/rmcp", version = "0.13.0", features = [
+mcpkit-rs = { path = "../../crates/mcpkit-rs", version = "0.15.0", features = [
     "client",
     "transport-child-process",
     "transport-streamable-http-client-reqwest"

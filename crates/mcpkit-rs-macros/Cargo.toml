@@ -1,6 +1,6 @@
 
 [package]
-name = "mcpkit_rs_macros"
+name = "mcpkit-rs-macros"
 license = { workspace = true }
 version = { workspace = true }
 edition = { workspace = true }
@@ -8,7 +8,7 @@ repository = { workspace = true }
 homepage = { workspace = true }
 readme = { workspace = true }
 description = "Rust SDK for Model Context Protocol macros library"
-documentation = "https://docs.rs/mcpkit_rs_macros"
+documentation = "https://docs.rs/mcpkit-rs-macros"
 
 [lib]
 proc-macro = true

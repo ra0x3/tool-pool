@@ -10,7 +10,7 @@ anyhow = "1.0"
 axum = "0.8"
 clap = { version = "4.0", features = ["derive"] }
 futures = "0.3"
-mcpkit_rs = { workspace = true, features = [
+mcpkit-rs = { workspace = true, features = [
     "client",
     "reqwest",
     "transport-streamable-http-client-reqwest",
