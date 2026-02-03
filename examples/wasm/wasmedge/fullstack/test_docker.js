@@ -182,6 +182,25 @@ async function runTest(name, testFunc, expectFailure = false) {
     }
 }
 
+function extractTextContent(response) {
+    const content = response?.result?.content;
+    if (!Array.isArray(content) || content.length === 0) {
+        return null;
+    }
+    return content[0]?.text ?? null;
+}
+
+function parseJson(text) {
+    if (!text) {
+        return null;
+    }
+    try {
+        return JSON.parse(text);
+    } catch (err) {
+        return null;
+    }
+}
+
 /**
  * Main test function
  */
@@ -469,6 +488,123 @@ async function runTests() {
             id: 18
         });
         return response && response.error; // Expect an error
+    }, true);
+
+    console.log(`\n${BLUE}=== Filesystem Access Tests ===${NC}`);
+
+    const allowedFile = '/tmp/wasm-fs-test/allowed/docker-output.txt';
+
+    await runTest('Write to allowed directory', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_write',
+                arguments: {
+                    path: allowedFile,
+                    content: 'hello from docker harness'
+                }
+            },
+            id: 24
+        });
+
+        const payload = parseJson(extractTextContent(response));
+        return payload?.success === true && payload?.path === allowedFile;
+    });
+
+    await runTest('Read from allowed directory', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_read',
+                arguments: {
+                    path: allowedFile
+                }
+            },
+            id: 25
+        });
+
+        const payload = parseJson(extractTextContent(response));
+        return payload?.success === true && payload?.content === 'hello from docker harness';
+    });
+
+    await runTest('List files in allowed directory', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_list',
+                arguments: {
+                    path: '/tmp/wasm-fs-test/allowed'
+                }
+            },
+            id: 26
+        });
+
+        const payload = parseJson(extractTextContent(response));
+        return payload?.success === true && Array.isArray(payload?.files);
+    });
+
+    await runTest('Read from forbidden directory (should fail)', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_read',
+                arguments: {
+                    path: '/tmp/wasm-fs-test/forbidden/secret.txt'
+                }
+            },
+            id: 27
+        });
+        return response && response.error;
+    }, true);
+
+    await runTest('Write to forbidden directory (should fail)', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_write',
+                arguments: {
+                    path: '/tmp/wasm-fs-test/forbidden/bad.txt',
+                    content: 'should not work'
+                }
+            },
+            id: 28
+        });
+        return response && response.error;
+    }, true);
+
+    await runTest('Read system file (should fail)', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_read',
+                arguments: {
+                    path: '/etc/passwd'
+                }
+            },
+            id: 29
+        });
+        return response && response.error;
+    }, true);
+
+    await runTest('List forbidden directory (should fail)', async () => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            method: 'tools/call',
+            params: {
+                name: 'file_list',
+                arguments: {
+                    path: '/tmp/wasm-fs-test/forbidden'
+                }
+            },
+            id: 30
+        });
+        return response && response.error;
     }, true);
 
     // Print summary

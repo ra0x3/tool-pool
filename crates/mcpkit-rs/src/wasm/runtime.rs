@@ -9,15 +9,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-use wasmtime::{Config, Engine, Linker, Module, ResourceLimiter, Store};
+use wasmtime::{Config, Engine, Linker, Module, ResourceLimiter, Store, Trap};
 use wasmtime_wasi::{
-    WasiCtxBuilder,
+    I32Exit, WasiCtxBuilder,
     pipe::{MemoryInputPipe, MemoryOutputPipe},
     preview1::WasiP1Ctx,
 };
 
 use super::{
     WasmError,
+    fs::FsPermissionMapper,
     metering::{
         ComputeUnits, DisplayFormat, EnforcementMode, FuelMetrics, FuelUpdate, MemoryLimits,
         MeteringConfig, MeteringMonitor, SamplingStrategy,
@@ -101,6 +102,9 @@ pub struct WasmContext {
 
     /// Monitoring channel for real-time updates
     pub monitor: Option<MeteringMonitor>,
+
+    /// Policy for filesystem permissions
+    pub policy: Option<Arc<mcpkit_rs_policy::CompiledPolicy>>,
 }
 
 impl WasmContext {
@@ -126,6 +130,7 @@ impl WasmContext {
             max_fuel: None,
             metering: Some(default_metering),
             monitor: None,
+            policy: None,
         }
     }
 
@@ -179,6 +184,12 @@ impl WasmContext {
         self
     }
 
+    /// Set policy for filesystem permissions
+    pub fn with_policy(mut self, policy: Arc<mcpkit_rs_policy::CompiledPolicy>) -> Self {
+        self.policy = Some(policy);
+        self
+    }
+
     /// Build WASI context for preview1
     fn build_wasi(&mut self) -> Result<WasiWithPipes, WasmError> {
         let mut builder = WasiCtxBuilder::new();
@@ -198,6 +209,25 @@ impl WasmContext {
         // Set environment variables
         for (key, value) in &self.env_vars {
             builder.env(key, value);
+        }
+
+        // Add preopened directories based on policy
+        if let Some(policy) = &self.policy {
+            let mapper = FsPermissionMapper::new(Some(policy.clone()));
+            let preopen_dirs = mapper.get_preopen_dirs();
+
+            for dir in preopen_dirs {
+                builder
+                    .preopened_dir(
+                        &dir.host_path,
+                        dir.guest_path.to_string_lossy(),
+                        dir.dir_perms,
+                        dir.file_perms,
+                    )
+                    .map_err(|e| {
+                        WasmError::RuntimeError(format!("Failed to preopen directory: {}", e))
+                    })?;
+            }
         }
 
         // Build the WASI preview1 context
@@ -411,9 +441,18 @@ impl WasmRuntime {
                 // Now check if the execution succeeded
                 match exec_result {
                     Ok(_) => Ok((output_bytes.to_vec(), metrics)),
-                    Err(e) => {
-                        // Check if it's a fuel exhaustion error
-                        if let Some(trap) = e.downcast_ref::<wasmtime::Trap>() {
+                    Err(err) => {
+                        if let Some(exit) = err.downcast_ref::<I32Exit>() {
+                            if exit.0 == 0 {
+                                return Ok((output_bytes.to_vec(), metrics));
+                            }
+                            return Err(WasmError::RuntimeError(format!(
+                                "Execution exited with status {}",
+                                exit.0
+                            )));
+                        }
+
+                        if let Some(trap) = err.downcast_ref::<Trap>() {
                             if trap.to_string().contains("fuel") {
                                 return Err(WasmError::RuntimeError(
                                     "Execution exceeded fuel limit (possible DOS attempt)"
@@ -421,7 +460,11 @@ impl WasmRuntime {
                                 ));
                             }
                         }
-                        Err(WasmError::RuntimeError(format!("Execution failed: {}", e)))
+
+                        Err(WasmError::RuntimeError(format!(
+                            "Execution failed: {}",
+                            err
+                        )))
                     }
                 }
             },

@@ -272,7 +272,10 @@ wasmedge \
     --env "DATABASE_URL=$SERVER_DATABASE_URL" \
     --env "HOST=$SERVER_HOST" \
     --env "PORT=$SERVER_PORT" \
-    --dir .:. "$HTTP_WASM_FILE" > /tmp/http_server.log 2>&1 &
+    --dir .:. \
+    --dir /tmp:/tmp \
+    --dir /var/tmp:/var/tmp \
+    "$HTTP_WASM_FILE" > /tmp/http_server.log 2>&1 &
 HTTP_PID=$!
 sleep 3
 if ! ps -p $HTTP_PID > /dev/null; then
@@ -321,6 +324,58 @@ send_request '{"jsonrpc":"2.0","method":"resources/read","params":{"uri":"file:/
 send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"create_todo","arguments":{"invalid_field":"test"}},"id":17}' "false" "Invalid tool arguments (should fail)"
 
 send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"delete_todo","arguments":{}},"id":18}' "false" "Missing required arguments (should fail)"
+
+echo ""
+echo "${BLUE}=== Filesystem Access Tests ===${NC}"
+
+# Test filesystem access with policies
+# These tests verify that the WASI filesystem permissions are correctly enforced
+
+# Create test directories and files for filesystem tests
+TEST_FS_DIR="/tmp/wasm-fs-test"
+mkdir -p "$TEST_FS_DIR/allowed" "$TEST_FS_DIR/forbidden" 2>/dev/null || true
+echo "test content" > "$TEST_FS_DIR/allowed/test.txt"
+echo "secret" > "$TEST_FS_DIR/forbidden/secret.txt"
+
+# Test 1: Read from allowed directory (should succeed)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_read","arguments":{"path":"/tmp/wasm-fs-test/allowed/test.txt"}},"id":24}' "true" "Read from allowed directory"
+
+# Test 2: Write to allowed directory (should succeed)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_write","arguments":{"path":"/tmp/wasm-fs-test/allowed/output.txt","content":"hello world from WASM"}},"id":25}' "true" "Write to allowed directory"
+
+# Test 3: List allowed directory (should succeed)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_list","arguments":{"path":"/tmp/wasm-fs-test/allowed"}},"id":26}' "true" "List files in allowed directory"
+
+# Test 4: Read from forbidden directory (should fail due to policy)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_read","arguments":{"path":"/tmp/wasm-fs-test/forbidden/secret.txt"}},"id":27}' "false" "Read from forbidden directory (should fail)"
+
+# Test 5: Write to forbidden directory (should fail due to policy)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_write","arguments":{"path":"/tmp/wasm-fs-test/forbidden/bad.txt","content":"should not work"}},"id":28}' "false" "Write to forbidden directory (should fail)"
+
+# Test 6: Read system file (should fail - not in allowed paths)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_read","arguments":{"path":"/etc/passwd"}},"id":29}' "false" "Read system file (should fail)"
+
+# Test 7: Write to system directory (should fail - not in allowed paths)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_write","arguments":{"path":"/etc/test.txt","content":"should not work"}},"id":30}' "false" "Write to system directory (should fail)"
+
+# Test 8: List forbidden directory (should fail)
+send_request '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"file_list","arguments":{"path":"/tmp/wasm-fs-test/forbidden"}},"id":31}' "false" "List forbidden directory (should fail)"
+
+# Verify the file was actually written
+if [ -f "$TEST_FS_DIR/allowed/output.txt" ]; then
+    echo "${GREEN}  ✓ File was successfully written to allowed directory${NC}"
+    CONTENT=$(cat "$TEST_FS_DIR/allowed/output.txt")
+    if [ "$CONTENT" = "hello world from WASM" ]; then
+        echo "${GREEN}  ✓ File content matches expected value${NC}"
+    else
+        echo "${RED}  ✗ File content does not match: '$CONTENT'${NC}"
+    fi
+else
+    echo "${RED}  ✗ File was not written to allowed directory${NC}"
+fi
+
+# Clean up test filesystem
+rm -rf "$TEST_FS_DIR" 2>/dev/null || true
 
 echo ""
 echo "${YELLOW}Cleaning up HTTP server...${NC}"

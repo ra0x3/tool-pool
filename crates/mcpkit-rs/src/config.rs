@@ -74,6 +74,11 @@ impl ServerConfig {
     pub fn create_wasm_context(&self) -> crate::wasm::WasmContext {
         let mut ctx = crate::wasm::WasmContext::new();
 
+        // Apply policy for filesystem permissions
+        if let Some(ref policy) = self.compiled_policy {
+            ctx = ctx.with_policy(policy.clone());
+        }
+
         // Apply runtime limits
         if let Some(ref limits) = self.config.runtime.limits {
             if let Some(ref exec_time) = limits.execution_time {
