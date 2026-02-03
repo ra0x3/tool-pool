@@ -99,6 +99,9 @@ policy:
       - name: "search_todos"
       - name: "db_stats"
       - name: "read_wal"
+      - name: "file_read"
+      - name: "file_write"
+      - name: "file_list"
     deny: []
   core:
     network:
@@ -109,11 +112,15 @@ policy:
         - host: "*"
     storage:
       allow:
-        - uri: "/tmp/**"
+        - uri: "fs:///tmp/wasm-fs-test/allowed/**"
+          access: ["read", "write"]
+        - uri: "fs:///tmp/**"
           access: ["read", "write"]
         - uri: "/var/tmp/**"
           access: ["read", "write"]
       deny:
+        - uri: "fs:///tmp/wasm-fs-test/forbidden/**"
+          access: ["read", "write"]
         - uri: "/etc/**"
           access: ["read", "write"]
         - uri: "/usr/**"

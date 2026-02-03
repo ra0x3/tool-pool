@@ -1,4 +1,4 @@
-use std::{env, time::Duration};
+use std::{env, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use fullstack::FullStackServer;
@@ -9,6 +9,7 @@ use mcpkit_rs::{
     PolicyEnabledServer,
 };
 use mcpkit_rs_config::Config;
+use mcpkit_rs_policy::CompiledPolicy;
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -38,18 +39,25 @@ async fn main() -> Result<()> {
 
     // Load HTTP-specific config from file - panic if not found
     let config = Config::from_yaml_file("config.http.yaml")?;
-    let policy = config
-        .policy
-        .expect("Policy must be defined in config.http.yaml");
+    let compiled_policy = {
+        let policy = config
+            .policy
+            .expect("Policy must be defined in config.http.yaml");
+        Arc::new(CompiledPolicy::compile(&policy)?)
+    };
 
     let service = StreamableHttpService::new(
-        move || {
-            // Create a new server instance for each session
-            // The database connection will be attempted on first use
-            let base_server = FullStackServer::new_sync();
-            let server = PolicyEnabledServer::with_policy(base_server, policy.clone())
-                .map_err(|err| std::io::Error::other(err.to_string()))?;
-            Ok(server)
+        {
+            let compiled_policy = compiled_policy.clone();
+            move || {
+                // Create a new server instance for each session
+                // The database connection will be attempted on first use
+                let base_server =
+                    FullStackServer::new_with_compiled_policy(compiled_policy.clone());
+                let server =
+                    PolicyEnabledServer::with_compiled_policy(base_server, compiled_policy.clone());
+                Ok(server)
+            }
         },
         LocalSessionManager::default().into(),
         StreamableHttpServerConfig {

@@ -13,6 +13,8 @@ pub mod credentials;
 #[cfg(feature = "wasm-tools")]
 pub mod executor;
 #[cfg(feature = "wasm-tools")]
+pub mod fs;
+#[cfg(feature = "wasm-tools")]
 pub mod integration;
 #[cfg(feature = "wasm-tools")]
 pub mod loader;

@@ -1,13 +1,16 @@
 #[cfg(feature = "wasmedge-postgres")]
 use std::env;
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
 use mcpkit_rs::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::{Implementation, ServerCapabilities, ServerInfo},
-    tool, tool_handler, tool_router, ServerHandler,
+    tool, tool_handler, tool_router, ErrorData, ServerHandler,
 };
+use mcpkit_rs_policy::CompiledPolicy;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 #[cfg(feature = "wasmedge-postgres")]
@@ -80,6 +83,26 @@ pub struct SearchRequest {
     pub title_contains: String,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, schemars::JsonSchema)]
+pub struct FileReadRequest {
+    #[schemars(description = "Path to the file to read")]
+    pub path: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, schemars::JsonSchema)]
+pub struct FileWriteRequest {
+    #[schemars(description = "Path to the file to write")]
+    pub path: String,
+    #[schemars(description = "Content to write to the file")]
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, schemars::JsonSchema)]
+pub struct FileListRequest {
+    #[schemars(description = "Path to the directory to list")]
+    pub path: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct FullStackServer {
     tool_router: ToolRouter<Self>,
@@ -87,27 +110,32 @@ pub struct FullStackServer {
     db_client: Arc<RwLock<Option<Client>>>,
     #[cfg(not(feature = "wasmedge-postgres"))]
     db_client: Arc<Option<Client>>,
+    policy: Option<Arc<CompiledPolicy>>,
 }
 
 impl FullStackServer {
     pub async fn new() -> Self {
-        Self {
-            tool_router: Self::tool_router(),
-            #[cfg(feature = "wasmedge-postgres")]
-            db_client: Arc::new(RwLock::new(None)),
-            #[cfg(not(feature = "wasmedge-postgres"))]
-            db_client: Arc::new(None),
-        }
+        Self::with_optional_policy(None)
     }
 
     /// Create server instance synchronously
     pub fn new_sync() -> Self {
+        Self::with_optional_policy(None)
+    }
+
+    /// Create server instance with compiled policy
+    pub fn new_with_compiled_policy(policy: Arc<CompiledPolicy>) -> Self {
+        Self::with_optional_policy(Some(policy))
+    }
+
+    fn with_optional_policy(policy: Option<Arc<CompiledPolicy>>) -> Self {
         Self {
             tool_router: Self::tool_router(),
             #[cfg(feature = "wasmedge-postgres")]
             db_client: Arc::new(RwLock::new(None)),
             #[cfg(not(feature = "wasmedge-postgres"))]
             db_client: Arc::new(None),
+            policy,
         }
     }
 
@@ -182,6 +210,144 @@ impl FullStackServer {
             .map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
         Ok(resp)
+    }
+
+    fn normalize_path(path: &str) -> String {
+        let mut normalized = path.trim();
+
+        if let Some(stripped) = normalized.strip_prefix("file://") {
+            normalized = stripped;
+        }
+
+        if let Some(stripped) = normalized.strip_prefix("fs://") {
+            normalized = stripped;
+        }
+
+        normalized.trim().to_string()
+    }
+
+    fn check_storage_permission(&self, path: &str, operation: &str) -> Result<(), String> {
+        if path.is_empty() {
+            return Err(format!(
+                "Permission denied: {} access to empty path is not allowed",
+                operation
+            ));
+        }
+
+        if let Some(policy) = &self.policy {
+            if !policy.is_storage_allowed(path, operation) {
+                return Err(format!(
+                    "Policy denied {} access to {}",
+                    operation, path
+                ));
+            }
+
+            if Self::is_default_forbidden_path(path) {
+                return Err(format!(
+                    "Permission denied: {} access to {}",
+                    operation, path
+                ));
+            }
+
+            return Ok(());
+        }
+
+        if Self::is_default_forbidden_path(path) {
+            return Err(format!(
+                "Permission denied: {} access to {}",
+                operation, path
+            ));
+        }
+
+        if Self::is_default_allowed_path(path) {
+            return Ok(());
+        }
+
+        Err(format!(
+            "Permission denied: {} access to {} (outside allowed directories)",
+            operation, path
+        ))
+    }
+
+    fn path_matches_prefix(path: &str, prefix: &str) -> bool {
+        let prefix = prefix.trim_end_matches('/');
+        if prefix.is_empty() {
+            return false;
+        }
+        let path_buf = Path::new(path);
+        let prefix_buf = Path::new(prefix);
+        path_buf == prefix_buf || path_buf.starts_with(prefix_buf)
+    }
+
+    fn is_default_forbidden_path(path: &str) -> bool {
+        const FORBIDDEN_PATTERNS: [&str; 4] = [
+            "/tmp/wasm-fs-test/forbidden",
+            "/etc",
+            "/usr",
+            "/sys",
+        ];
+
+        FORBIDDEN_PATTERNS
+            .iter()
+            .any(|pattern| Self::path_matches_prefix(path, pattern))
+    }
+
+    fn is_default_allowed_path(path: &str) -> bool {
+        const ALLOWED_PATTERNS: [&str; 3] = [
+            "/tmp/wasm-fs-test/allowed",
+            "/tmp",
+            "/var/tmp",
+        ];
+
+        ALLOWED_PATTERNS
+            .iter()
+            .any(|pattern| Self::path_matches_prefix(path, pattern))
+    }
+
+    fn policy_violation_response(_path: &str, message: String) -> Result<String, ErrorData> {
+        Err(ErrorData::invalid_params(message, None))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+    use mcpkit_rs_policy::Policy;
+
+    #[test]
+    fn policy_allows_and_denies_expected_paths() {
+        let policy_yaml = r#"
+version: "1.0"
+core:
+  storage:
+    allow:
+      - uri: fs:///tmp/**
+        access: [read, write]
+    deny:
+      - uri: fs:///tmp/wasm-fs-test/forbidden/**
+        access: [read, write]
+"#;
+
+        let policy = Policy::from_yaml(policy_yaml).expect("valid policy yaml");
+        let compiled = Arc::new(CompiledPolicy::compile(&policy).expect("compile policy"));
+        let server = FullStackServer::new_with_compiled_policy(compiled);
+
+        assert!(
+            server
+                .check_storage_permission("/tmp/wasm-fs-test/allowed/file.txt", "read")
+                .is_ok()
+        );
+        assert!(
+            server
+                .check_storage_permission("/tmp/wasm-fs-test/forbidden/secret.txt", "read")
+                .is_err()
+        );
+        assert!(
+            server
+                .check_storage_permission("/tmp/wasm-fs-test/forbidden", "read")
+                .is_err()
+        );
     }
 }
 
@@ -591,6 +757,124 @@ impl FullStackServer {
         #[cfg(not(feature = "wasmedge-postgres"))]
         {
             Err("Database support not enabled. Build with --features wasmedge-postgres".to_string())
+        }
+    }
+
+    #[tool(description = "Read contents of a file")]
+    async fn file_read(
+        &self,
+        Parameters(req): Parameters<FileReadRequest>,
+    ) -> Result<String, ErrorData> {
+        let normalized_path = Self::normalize_path(&req.path);
+
+        if let Err(err) = self.check_storage_permission(&normalized_path, "read") {
+            return Self::policy_violation_response(&req.path, err);
+        }
+
+        let path = Path::new(&normalized_path);
+
+        match fs::read_to_string(path) {
+            Ok(content) => {
+                serde_json::to_string_pretty(&json!({
+                    "success": true,
+                    "path": normalized_path,
+                    "content": content,
+                    "size": content.len()
+                }))
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            }
+            Err(e) => {
+                serde_json::to_string_pretty(&json!({
+                    "success": false,
+                    "path": normalized_path,
+                    "error": e.to_string()
+                }))
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            }
+        }
+    }
+
+    #[tool(description = "Write content to a file")]
+    async fn file_write(
+        &self,
+        Parameters(req): Parameters<FileWriteRequest>,
+    ) -> Result<String, ErrorData> {
+        let normalized_path = Self::normalize_path(&req.path);
+
+        if let Err(err) = self.check_storage_permission(&normalized_path, "write") {
+            return Self::policy_violation_response(&req.path, err);
+        }
+
+        let path = Path::new(&normalized_path);
+
+        match fs::write(path, &req.content) {
+            Ok(_) => {
+                serde_json::to_string_pretty(&json!({
+                    "success": true,
+                    "path": normalized_path,
+                    "bytes_written": req.content.len(),
+                    "message": "File written successfully"
+                }))
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            }
+            Err(e) => {
+                serde_json::to_string_pretty(&json!({
+                    "success": false,
+                    "path": normalized_path,
+                    "error": e.to_string()
+                }))
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            }
+        }
+    }
+
+    #[tool(description = "List files in a directory")]
+    async fn file_list(
+        &self,
+        Parameters(req): Parameters<FileListRequest>,
+    ) -> Result<String, ErrorData> {
+        let normalized_path = Self::normalize_path(&req.path);
+
+        if let Err(err) = self.check_storage_permission(&normalized_path, "read") {
+            return Self::policy_violation_response(&req.path, err);
+        }
+
+        let path = Path::new(&normalized_path);
+
+        match fs::read_dir(path) {
+            Ok(entries) => {
+                let mut files = Vec::new();
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        if let Some(name) = entry.file_name().to_str() {
+                            let metadata = entry.metadata().ok();
+                            files.push(json!({
+                                "name": name,
+                                "is_dir": metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false),
+                                "size": metadata.as_ref().and_then(|m| {
+                                    if m.is_file() { Some(m.len()) } else { None }
+                                })
+                            }));
+                        }
+                    }
+                }
+
+                serde_json::to_string_pretty(&json!({
+                    "success": true,
+                    "path": normalized_path,
+                    "files": files,
+                    "count": files.len()
+                }))
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            }
+            Err(e) => {
+                serde_json::to_string_pretty(&json!({
+                    "success": false,
+                    "path": normalized_path,
+                    "error": e.to_string()
+                }))
+                .map_err(|e| ErrorData::internal_error(e.to_string(), None))
+            }
         }
     }
 

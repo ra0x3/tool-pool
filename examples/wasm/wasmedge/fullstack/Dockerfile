@@ -62,8 +62,9 @@ ENV PATH="/root/.wasmedge/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/root/.wasmedge/lib:${LD_LIBRARY_PATH}"
 # DATABASE_URL should be provided at runtime
 # Default is empty to enforce explicit configuration
-ENV DATABASE_URL=""
-ENV HOST="0.0.0.0"
+# Default environment variables (can be overridden by caller)
+ENV HOST=0.0.0.0
+ENV PORT=8080
 
 # Create entrypoint script for running with Inspector
 RUN echo '#!/bin/bash\n\
@@ -76,6 +77,10 @@ echo "PostgreSQL is ready!"\n\
 # Test database connection\n\
 PGPASSWORD=postgres psql -h postgres -U postgres -d todo -c "SELECT 1" > /dev/null 2>&1 || exit 1\n\
 echo "Database connection verified!"\n\
+\n\
+mkdir -p /tmp/wasm-fs-test/allowed /tmp/wasm-fs-test/forbidden\n\
+echo 'test content' > /tmp/wasm-fs-test/allowed/test.txt\n\
+echo 'secret' > /tmp/wasm-fs-test/forbidden/secret.txt\n\
 \n\
 echo ""\n\
 echo "========================================"\n\
@@ -97,9 +102,8 @@ echo "Starting MCP server with Inspector..."\n\
 echo "Note: Inspector will be available at http://127.0.0.1:6274 from your host machine"\n\
 echo "Using config.stdio.yaml for stdio transport"\n\
 export PATH="/root/.wasmedge/bin:${PATH}"\n\
-export HOST="0.0.0.0"\n\
 cd /app\n\
-exec env DATABASE_URL="${DATABASE_URL}" npx @modelcontextprotocol/inspector wasmedge --dir .:. run fullstack-stdio.wasm\n\
+npx @modelcontextprotocol/inspector wasmedge --env "DATABASE_URL=${DATABASE_URL}" --env "HOST=${HOST:-0.0.0.0}" --env "PORT=${PORT:-8080}" --dir .:. --dir /tmp:/tmp --dir /var/tmp:/var/tmp run fullstack-stdio.wasm\n\
 ' > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
 
 WORKDIR /app
@@ -116,11 +120,15 @@ echo "PostgreSQL is ready!"\n\
 PGPASSWORD=postgres psql -h postgres -U postgres -d todo -c "SELECT 1" > /dev/null 2>&1 || exit 1\n\
 echo "Database connection verified!"\n\
 \n\
+mkdir -p /tmp/wasm-fs-test/allowed /tmp/wasm-fs-test/forbidden\n\
+echo 'test content' > /tmp/wasm-fs-test/allowed/test.txt\n\
+echo 'secret' > /tmp/wasm-fs-test/forbidden/secret.txt\n\
+\n\
 echo "Starting MCP HTTP server for testing..."\n\
 echo "Using config.http.yaml for HTTP transport"\n\
 export PATH="/root/.wasmedge/bin:${PATH}"\n\
 cd /app\n\
-exec env DATABASE_URL="${DATABASE_URL}" HOST="0.0.0.0" PORT="8080" wasmedge --dir .:. run fullstack-http.wasm\n\
+wasmedge --env "DATABASE_URL=${DATABASE_URL}" --env "HOST=0.0.0.0" --env "PORT=8080" --dir .:. --dir /tmp:/tmp --dir /var/tmp:/var/tmp run fullstack-http.wasm\n\
 ' > /app/entrypoint-test.sh && chmod +x /app/entrypoint-test.sh
 
 # Inspector runs on ports 6274 (UI) and 6277 (proxy), HTTP server on 8080
