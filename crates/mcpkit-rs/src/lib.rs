@@ -128,12 +128,14 @@
 //!
 //!     // Call tool 'git_status' with arguments = {"repo_path": "."}
 //!     let tool_result = service
-//!         .call_tool(CallToolRequestParams {
-//!             meta: None,
-//!             name: "git_status".into(),
-//!             arguments: serde_json::json!({ "repo_path": "." }).as_object().cloned(),
-//!             task: None,
-//!         })
+//!         .call_tool(
+//!             CallToolRequestParams::new("git_status").with_arguments(
+//!                 serde_json::json!({ "repo_path": "." })
+//!                     .as_object()
+//!                     .cloned()
+//!                     .expect("object"),
+//!             ),
+//!         )
 //!         .await?;
 //!     println!("Tool result: {tool_result:#?}");
 //!
@@ -201,8 +203,8 @@ pub use mcpkit_rs_macros::*;
 #[cfg(all(feature = "macros", feature = "server"))]
 #[cfg_attr(docsrs, doc(cfg(all(feature = "macros", feature = "server"))))]
 pub use pastey::paste;
-#[cfg(feature = "schemars")]
-#[cfg_attr(docsrs, doc(cfg(feature = "schemars")))]
+#[cfg(any(feature = "server", feature = "schemars"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "server", feature = "schemars"))))]
 pub use schemars;
 #[cfg(feature = "macros")]
 #[cfg_attr(docsrs, doc(cfg(feature = "macros")))]

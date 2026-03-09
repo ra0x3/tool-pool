@@ -17,7 +17,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["base64", "macros", "server", "config"]
 client = ["dep:tokio-stream"]
 macros = ["dep:mcpkit-rs-macros", "dep:pastey"]
-server = ["transport-async-rw", "dep:schemars", "dep:pastey"]
+server = ["transport-async-rw", "schemars", "dep:pastey"]
 elicitation = []
 wasm-tools = ["dep:wasmtime", "dep:wasmtime-wasi"]
 config = ["dep:mcpkit-rs-config", "dep:mcpkit-rs-policy"]
@@ -65,6 +65,7 @@ transport-streamable-http-server-session = ["transport-async-rw", "dep:tokio-str
 # transport-ws = ["transport-io", "dep:tokio-tungstenite"]
 tower = ["dep:tower-service"]
 auth = ["dep:oauth2", "__reqwest", "dep:url"]
+auth-client-credentials-jwt = ["auth", "dep:jsonwebtoken", "uuid"]
 schemars = ["dep:schemars"]
 
 [dependencies]
@@ -73,7 +74,7 @@ async-trait = "0.1.89"
 # tokio-tungstenite ={ version = "0.26", optional = true }
 
 # for http-server transport
-axum = { version = "0.8",  default-features = false, features = ["http1", "tokio"], optional = true }
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"], optional = true }
 
 # for image encoding
 base64 = { version = "0.22", optional = true }
@@ -85,6 +86,7 @@ hex = { version = "0.4", optional = true }
 http = { version = "1", optional = true }
 http-body = { version = "1", optional = true }
 http-body-util = { version = "0.1", optional = true }
+jsonwebtoken = { version = "9", optional = true }
 mcpkit-rs-config = { workspace = true, optional = true }
 mcpkit-rs-macros = { workspace = true, optional = true }
 mcpkit-rs-policy = { workspace = true, optional = true }
@@ -126,8 +128,6 @@ uuid = { version = "1", features = ["v4"], optional = true }
 wasmtime = { version = "24.0", optional = true }
 wasmtime-wasi = { version = "24.0", optional = true }
 
-# wasm
-
 [target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
 chrono = { version = "0.4.38", default-features = false, features = [
   "serde",
@@ -136,21 +136,26 @@ chrono = { version = "0.4.38", default-features = false, features = [
   "oldtime",
 ] }
 
+# wasm
+
+[target.'cfg(not(all(target_family = "wasm", target_os = "unknown")))'.dependencies]
+chrono = { version = "0.4.38", features = ["serde"] }
+
 [dev-dependencies]
 
 anyhow = "1.0"
 async-trait = "0.1"
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
 schemars = { version = "1.1.0", features = ["chrono04"] }
 serde_yaml = "0.9"
 tempfile = "3.8"
 tokio = { version = "=1.36.0", features = ["full"] }
-axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
-url = "2.4"
 tracing-subscriber = { version = "0.3", features = [
   "env-filter",
   "std",
   "fmt",
 ] }
+url = "2.4"
 wat = "1.0"
 [[test]]
 name = "test_tool_macros"
@@ -224,7 +229,6 @@ name = "test_streamable_http_json_response"
 required-features = ["server", "client", "transport-streamable-http-server", "reqwest"]
 path = "tests/test_streamable_http_json_response.rs"
 
-
 [[test]]
 name = "test_custom_request"
 required-features = ["server", "client"]
@@ -239,7 +243,6 @@ path = "tests/test_prompt_macros.rs"
 name = "test_sampling"
 required-features = ["server", "client"]
 path = "tests/test_sampling.rs"
-
 
 [[test]]
 name = "test_close_connection"
@@ -268,7 +271,13 @@ path = "tests/test_policy_simple.rs"
 
 [[test]]
 name = "test_sse_concurrent_streams"
-required-features = ["server", "client", "transport-streamable-http-server", "transport-streamable-http-client", "reqwest"]
+required-features = [
+    "server",
+    "client",
+    "transport-streamable-http-server",
+    "transport-streamable-http-client",
+    "reqwest",
+]
 path = "tests/test_sse_concurrent_streams.rs"
 
 [[test]]

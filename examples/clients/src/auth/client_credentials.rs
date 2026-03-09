@@ -1,7 +1,7 @@
 use std::env;
 
 use anyhow::{Context, Result};
-use rmcp::{
+use mcpkit_rs::{
     ServiceExt,
     model::ClientInfo,
     transport::{

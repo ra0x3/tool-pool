@@ -54,7 +54,7 @@ impl ResolvedPromptAttribute {
             .unwrap_or_default();
         let meta_call = meta.map(|m| quote! { .with_meta(#m) }).unwrap_or_default();
         let tokens = quote! {
-            pub fn #fn_ident() -> rmcp::model::Prompt {
+            pub fn #fn_ident() -> mcpkit_rs::model::Prompt {
                 mcpkit_rs::model::Prompt::from_raw(
                     #name,
                     #description,

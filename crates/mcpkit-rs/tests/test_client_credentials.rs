@@ -6,7 +6,7 @@ use axum::{
     http::{Request, Response, StatusCode},
     routing::{get, post},
 };
-use rmcp::transport::auth::{ClientCredentialsConfig, OAuthState};
+use mcpkit_rs::transport::auth::{ClientCredentialsConfig, OAuthState};
 
 fn json_response(body: serde_json::Value) -> Response<Body> {
     Response::builder()

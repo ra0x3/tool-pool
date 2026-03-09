@@ -324,7 +324,7 @@ macro_rules! builder {
                     <[<$Target Builder>]>::default()
                 }
             }
-            #[cfg(feature = "macros")]
+            #[cfg(any(feature = "server", feature = "macros"))]
 impl<S> [<$Target Builder>]<S> {
                 pub fn build(self) -> $Target {
                     $Target {
@@ -332,7 +332,7 @@ impl<S> [<$Target Builder>]<S> {
                     }
                 }
             }
-            #[cfg(feature = "macros")]
+            #[cfg(any(feature = "server", feature = "macros"))]
 impl<S> From<[<$Target Builder>]<S>> for $Target {
                 fn from(builder: [<$Target Builder>]<S>) -> Self {
                     builder.build()
@@ -354,7 +354,7 @@ impl<S> From<[<$Target Builder>]<S>> for $Target {
     };
     ($Target: ident @impl_toggle [$($ff: ident: $Tf: ty,)*][$fn: ident: $TN: ty][$($ft: ident: $Tt: ty,)*]) => {
         paste! {
-            #[cfg(feature = "macros")]
+            #[cfg(any(feature = "server", feature = "macros"))]
 impl<
                 $(const [<$ff:upper>]: bool,)*
                 $(const [<$ft:upper>]: bool,)*

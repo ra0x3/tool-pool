@@ -231,7 +231,7 @@ async fn test_post_message_allows_mcp_protocol_version() {
     assert!(
         !matches!(
             &result,
-            Err(rmcp::transport::streamable_http_client::StreamableHttpError::ReservedHeaderConflict(
+            Err(mcpkit_rs::transport::streamable_http_client::StreamableHttpError::ReservedHeaderConflict(
                 _
             ))
         ),
@@ -545,7 +545,7 @@ async fn test_mcp_protocol_version_header_sent_after_init() -> anyhow::Result<()
         Router, body::Bytes, extract::State, http::StatusCode, response::IntoResponse,
         routing::post,
     };
-    use rmcp::{
+    use mcpkit_rs::{
         ServiceExt,
         transport::{
             StreamableHttpClientTransport,
@@ -716,7 +716,7 @@ async fn test_server_rejects_unsupported_protocol_version() {
     use bytes::Bytes;
     use http::{Method, Request, header::CONTENT_TYPE};
     use http_body_util::Full;
-    use rmcp::{
+    use mcpkit_rs::{
         handler::server::ServerHandler,
         model::{ServerCapabilities, ServerInfo},
         transport::streamable_http_server::{
@@ -858,7 +858,7 @@ async fn test_server_rejects_unsupported_protocol_version() {
 /// Unit test: ProtocolVersion::as_str and KNOWN_VERSIONS
 #[test]
 fn test_protocol_version_utilities() {
-    use rmcp::model::ProtocolVersion;
+    use mcpkit_rs::model::ProtocolVersion;
 
     assert_eq!(ProtocolVersion::V_2025_06_18.as_str(), "2025-06-18");
     assert_eq!(ProtocolVersion::V_2025_03_26.as_str(), "2025-03-26");

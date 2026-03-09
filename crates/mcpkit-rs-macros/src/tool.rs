@@ -154,7 +154,7 @@ impl ResolvedToolAttribute {
         let doc_attr: syn::Attribute = parse_quote!(#[doc = #doc_comment]);
         let tokens = quote! {
             #doc_attr
-            pub fn #fn_ident() -> rmcp::model::Tool {
+            pub fn #fn_ident() -> mcpkit_rs::model::Tool {
                 mcpkit_rs::model::Tool::new_with_raw(
                     #name,
                     #description,

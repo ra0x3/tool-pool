@@ -6,8 +6,8 @@ mod common;
 
 use std::sync::Arc;
 
-use common::handlers::{TestClientHandler, TestServer};
-use mcpkit_rs::{ClientHandler, ServerHandler};
+use common::handlers::TestServer;
+use mcpkit_rs::ServerHandler;
 
 #[test]
 fn test_wrapped_server_handlers() {

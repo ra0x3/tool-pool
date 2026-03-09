@@ -44,7 +44,7 @@ pub fn task_handler(attr: TokenStream, input: TokenStream) -> syn::Result<TokenS
                         let timestamp = mcpkit_rs::task_manager::current_timestamp();
                         mcpkit_rs::model::Task::new(
                             task_id,
-                            rmcp::model::TaskStatus::Working,
+                            mcpkit_rs::model::TaskStatus::Working,
                             timestamp.clone(),
                             timestamp,
                         )

@@ -1,9 +1,11 @@
 #![cfg(all(feature = "client", feature = "server", feature = "macros"))]
 
+use futures::StreamExt;
 use mcpkit_rs::{
-    ClientHandler, Peer, RoleServer, ServerHandler,
+    ClientHandler, Peer, RoleServer, ServerHandler, ServiceExt,
     handler::{client::progress::ProgressDispatcher, server::tool::ToolRouter},
-    model::{Meta, ProgressNotificationParam},
+    model::{CallToolRequestParams, ClientRequest, Meta, ProgressNotificationParam, Request},
+    service::PeerRequestOptions,
     tool, tool_handler, tool_router,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -68,17 +70,21 @@ impl MyServer {
                     "Progress token is required for this tool",
                     None,
                 ))?;
-        for step in 0..10 {
-            let _ = client
-                .notify_progress(ProgressNotificationParam {
-                    progress_token: progress_token.clone(),
-                    progress: (step as f64),
-                    total: Some(10.0),
-                    message: Some("Some message".into()),
-                })
-                .await;
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        }
+        // This test server processes requests inline; sending notifications synchronously
+        // from within the request handler can deadlock the service loop.
+        tokio::spawn(async move {
+            for step in 0..10 {
+                let _ = client
+                    .notify_progress(ProgressNotificationParam {
+                        progress_token: progress_token.clone(),
+                        progress: step as f64,
+                        total: Some(10.0),
+                        message: Some("Some message".into()),
+                    })
+                    .await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            }
+        });
         Ok(())
     }
 }
@@ -118,14 +124,18 @@ async fn test_progress_subscriber() -> anyhow::Result<()> {
         .progress_handler
         .subscribe(handle.progress_token.clone())
         .await;
-    tokio::spawn(async move {
-        while let Some(notification) = progress_subscriber.next().await {
-            tracing::info!("Progress notification: {:?}", notification);
-        }
-    });
     let _response = handle.await_response().await?;
 
-    // Simulate some delay to allow the async task to complete
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    for step in 0..10 {
+        let notification = tokio::time::timeout(
+            tokio::time::Duration::from_secs(2),
+            progress_subscriber.next(),
+        )
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("progress stream closed before step {step}"))?;
+        assert_eq!(notification.progress, step as f64);
+        assert_eq!(notification.total, Some(10.0));
+    }
+
     Ok(())
 }

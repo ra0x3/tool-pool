@@ -1,4 +1,4 @@
-#![cfg(feature = "schemars")]
+#![cfg(all(feature = "schemars", feature = "macros"))]
 
 use std::collections::HashMap;
 

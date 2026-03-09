@@ -1,5 +1,5 @@
 //cargo test --test test_structured_output --features "client server macros"
-#![cfg(feature = "schemars")]
+#![cfg(all(feature = "schemars", feature = "macros"))]
 
 use mcpkit_rs::{
     Json, ServerHandler,

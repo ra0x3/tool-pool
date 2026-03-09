@@ -1,16 +1,15 @@
 //! Common utilities shared between tool and prompt handlers
 
+use std::sync::Arc;
 #[cfg(feature = "schemars")]
-use std::{any::TypeId, collections::HashMap, sync::Arc};
+use std::{any::TypeId, collections::HashMap};
 
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
 
 #[cfg(feature = "schemars")]
-use crate::model::JsonObject;
-#[cfg(feature = "schemars")]
 use crate::schemars::generate::SchemaSettings;
-use crate::{RoleServer, service::RequestContext};
+use crate::{RoleServer, model::JsonObject, service::RequestContext};
 
 /// Generates a JSON schema for a type
 #[cfg(feature = "schemars")]

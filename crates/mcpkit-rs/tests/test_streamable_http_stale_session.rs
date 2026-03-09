@@ -6,7 +6,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use rmcp::{
+use mcpkit_rs::{
     model::{ClientJsonRpcMessage, ClientRequest, PingRequest, RequestId},
     transport::{
         streamable_http_client::{StreamableHttpClient, StreamableHttpError},

@@ -4,7 +4,7 @@
 //! [`tool`][crate::tool] macro.
 //!
 //! ```rust
-//! # use rmcp::{
+//! # use mcpkit_rs::{
 //! #     tool_router, tool,
 //! #     handler::server::{wrapper::{Parameters, Json}, tool::ToolRouter},
 //! #     schemars
@@ -39,7 +39,7 @@
 //! in individual file, combined into MCP server using [`SyncTool`] and [`AsyncTool`] traits.
 //!
 //! ```rust
-//! # use rmcp::{
+//! # use mcpkit_rs::{
 //! #     handler::server::{
 //! #         tool::ToolRouter,
 //! #         router::tool::{SyncTool, AsyncTool, ToolBase},

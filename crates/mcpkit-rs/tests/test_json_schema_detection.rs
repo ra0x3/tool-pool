@@ -1,4 +1,4 @@
-#![cfg(feature = "schemars")]
+#![cfg(all(feature = "schemars", feature = "macros"))]
 
 //cargo test --test test_json_schema_detection --features "client server macros"
 use mcpkit_rs::{

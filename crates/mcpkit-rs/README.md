@@ -187,12 +187,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Call a tool
     let result = service
-        .call_tool(CallToolRequestParams {
-            meta: None,
-            name: "git_status".into(),
-            arguments: serde_json::json!({ "repo_path": "." }).as_object().cloned(),
-            task: None,
-        })
+        .call_tool(
+            CallToolRequestParams::new("git_status").with_arguments(
+                serde_json::json!({ "repo_path": "." })
+                    .as_object()
+                    .cloned()
+                    .expect("object"),
+            ),
+        )
         .await?;
     println!("Result: {result:#?}");
 

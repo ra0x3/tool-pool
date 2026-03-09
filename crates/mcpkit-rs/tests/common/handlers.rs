@@ -4,9 +4,6 @@ use std::{
 };
 
 #[cfg(feature = "client")]
-use rmcp::service::NotificationContext;
-
-#[cfg(feature = "client")]
 use mcpkit_rs::{ClientHandler, RoleClient};
 use mcpkit_rs::{
     ErrorData as McpError, RoleServer, ServerHandler,

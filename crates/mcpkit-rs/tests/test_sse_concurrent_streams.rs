@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::StreamExt;
-use rmcp::{
+use mcpkit_rs::{
     RoleServer, ServerHandler,
     model::{Implementation, ServerCapabilities, ServerInfo, ToolsCapability},
     service::NotificationContext,

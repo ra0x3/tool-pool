@@ -1,4 +1,4 @@
-#![cfg(feature = "schemars")]
+#![cfg(all(feature = "schemars", feature = "macros"))]
 
 use mcpkit_rs::{
     ErrorData as McpError, handler::server::wrapper::Parameters, model::*, schemars, tool,

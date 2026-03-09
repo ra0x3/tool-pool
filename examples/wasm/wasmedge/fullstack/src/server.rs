@@ -955,18 +955,12 @@ impl FullStackServer {
 #[tool_handler]
 impl ServerHandler for FullStackServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            server_info: Implementation {
-                name: "fullstack".to_string(),
-                title: Some("WASM Fullstack Server".to_string()),
-                version: "1.0.0".to_string(),
-                description: Some("WasmEdge fullstack MCP server with PostgreSQL".to_string()),
-                icons: None,
-                website_url: None,
-            },
-            instructions: Some("Full-Stack Server - Real PostgreSQL & HTTP with WasmEdge".into()),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            ..Default::default()
-        }
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(
+                Implementation::new("fullstack", "1.0.0")
+                    .with_title("WASM Fullstack Server")
+                    .with_description("WasmEdge fullstack MCP server with PostgreSQL"),
+            )
+            .with_instructions("Full-Stack Server - Real PostgreSQL & HTTP with WasmEdge")
     }
 }

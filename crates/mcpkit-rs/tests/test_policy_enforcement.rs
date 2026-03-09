@@ -41,11 +41,10 @@ impl ServerHandler for TestToolServer {
     ) -> Result<ListToolsResult, ErrorData> {
         Ok(ListToolsResult {
             tools: vec![
-                Tool {
-                    name: "read_file".into(),
-                    title: None,
-                    description: Some("Read a file".into()),
-                    input_schema: Arc::new(
+                Tool::new(
+                    "read_file",
+                    "Read a file",
+                    Arc::new(
                         serde_json::json!({
                             "type": "object",
                             "properties": {
@@ -56,17 +55,11 @@ impl ServerHandler for TestToolServer {
                         .unwrap()
                         .clone(),
                     ),
-                    output_schema: None,
-                    annotations: None,
-                    execution: None,
-                    icons: None,
-                    meta: None,
-                },
-                Tool {
-                    name: "write_file".into(),
-                    title: None,
-                    description: Some("Write a file".into()),
-                    input_schema: Arc::new(
+                ),
+                Tool::new(
+                    "write_file",
+                    "Write a file",
+                    Arc::new(
                         serde_json::json!({
                             "type": "object",
                             "properties": {
@@ -78,23 +71,12 @@ impl ServerHandler for TestToolServer {
                         .unwrap()
                         .clone(),
                     ),
-                    output_schema: None,
-                    annotations: None,
-                    execution: None,
-                    icons: None,
-                    meta: None,
-                },
-                Tool {
-                    name: "dangerous_tool".into(),
-                    title: None,
-                    description: Some("A dangerous operation".into()),
-                    input_schema: Arc::new(serde_json::json!({}).as_object().unwrap().clone()),
-                    output_schema: None,
-                    annotations: None,
-                    execution: None,
-                    icons: None,
-                    meta: None,
-                },
+                ),
+                Tool::new(
+                    "dangerous_tool",
+                    "A dangerous operation",
+                    Arc::new(serde_json::json!({}).as_object().unwrap().clone()),
+                ),
             ],
             next_cursor: None,
             meta: None,
@@ -108,12 +90,10 @@ impl ServerHandler for TestToolServer {
     ) -> Result<CallToolResult, ErrorData> {
         self.calls.lock().await.push(params.name.to_string());
 
-        Ok(CallToolResult {
-            content: vec![Content::text(format!("Executed: {}", params.name))],
-            is_error: None,
-            meta: None,
-            structured_content: None,
-        })
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "Executed: {}",
+            params.name
+        ))]))
     }
 }
 
@@ -146,12 +126,10 @@ async fn test_vanilla_server_works_without_policy() {
         for tool_name in ["read_file", "write_file", "dangerous_tool"] {
             let result = client
                 .peer()
-                .call_tool(CallToolRequestParams {
-                    name: tool_name.into(),
-                    arguments: Some(serde_json::json!({}).as_object().unwrap().clone()),
-                    task: None,
-                    meta: None,
-                })
+                .call_tool(
+                    CallToolRequestParams::new(tool_name)
+                        .with_arguments(serde_json::json!({}).as_object().unwrap().clone()),
+                )
                 .await?;
 
             assert_eq!(result.content.len(), 1);
@@ -220,17 +198,14 @@ extensions:
         // Call allowed tool - should work
         let result = client
             .peer()
-            .call_tool(CallToolRequestParams {
-                name: "read_file".into(),
-                arguments: Some(
+            .call_tool(
+                CallToolRequestParams::new("read_file").with_arguments(
                     serde_json::json!({"path": "/allowed/path"})
                         .as_object()
                         .unwrap()
                         .clone(),
                 ),
-                task: None,
-                meta: None,
-            })
+            )
             .await?;
 
         assert_eq!(result.content.len(), 1);
@@ -238,12 +213,10 @@ extensions:
         // Call denied tool - should get standard MCP error
         let error = client
             .peer()
-            .call_tool(CallToolRequestParams {
-                name: "dangerous_tool".into(),
-                arguments: Some(serde_json::json!({}).as_object().unwrap().clone()),
-                task: None,
-                meta: None,
-            })
+            .call_tool(
+                CallToolRequestParams::new("dangerous_tool")
+                    .with_arguments(serde_json::json!({}).as_object().unwrap().clone()),
+            )
             .await
             .unwrap_err();
 
@@ -320,14 +293,14 @@ async fn test_policy_with_resource_permissions() {
             params: ReadResourceRequestParams,
             _context: RequestContext<mcpkit_rs::service::RoleServer>,
         ) -> Result<ReadResourceResult, ErrorData> {
-            Ok(ReadResourceResult {
-                contents: vec![mcpkit_rs::model::ResourceContents::TextResourceContents {
+            Ok(ReadResourceResult::new(vec![
+                mcpkit_rs::model::ResourceContents::TextResourceContents {
                     text: format!("Contents of {}", params.uri),
                     uri: params.uri.clone(),
                     mime_type: None,
                     meta: None,
-                }],
-            })
+                },
+            ]))
         }
     }
 
@@ -368,10 +341,9 @@ core:
         // Try to read allowed resource
         let result = client
             .peer()
-            .read_resource(ReadResourceRequestParams {
-                uri: "file:///home/user/document.txt".into(),
-                meta: None,
-            })
+            .read_resource(ReadResourceRequestParams::new(
+                "file:///home/user/document.txt",
+            ))
             .await?;
 
         assert_eq!(result.contents.len(), 1);
@@ -379,10 +351,7 @@ core:
         // Try to read denied resource
         let error = client
             .peer()
-            .read_resource(ReadResourceRequestParams {
-                uri: "file:///etc/passwd".into(),
-                meta: None,
-            })
+            .read_resource(ReadResourceRequestParams::new("file:///etc/passwd"))
             .await
             .unwrap_err();
 

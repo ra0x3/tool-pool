@@ -47,12 +47,11 @@ async fn main() -> anyhow::Result<()> {
             let result = client
                 .peer()
                 .call_tool(
-                    mcpkit_rs::model::CallToolRequestParams::new(sum_tool.name.clone()).with_arguments(
-                        mcpkit_rs::object!({
+                    mcpkit_rs::model::CallToolRequestParams::new(sum_tool.name.clone())
+                        .with_arguments(mcpkit_rs::object!({
                             "a": 10,
                             "b": 20
-                        }),
-                    ),
+                        })),
                 )
                 .await?;
 
